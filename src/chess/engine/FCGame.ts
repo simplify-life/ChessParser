@@ -238,6 +238,7 @@ export class FCGame {
             flags = BITS.CAPTURE;
           }
           to = SQUARES[parse[4]];
+
           for (var j = 0, len = PIECE_OFFSETS[piece].length; j < len; j++) {
             var offset = PIECE_OFFSETS[piece][j];
             var square = to;
@@ -249,7 +250,16 @@ export class FCGame {
               var b = this.board[square];
               if (b) {
                 if (b.color === this.turn && b.type === piece && (!parse[2] || coord2str(square).indexOf(parse[2]) >= 0)) {
-                  from = square;
+                  let mv = this.build_move(this.board, square, to, flags, promotion);
+                  if(mv){
+                    this.make_move(mv)
+                    if(this.king_attacked(b.color)){
+                      this.undo_move()
+                      break
+                    }
+                    this.undo_move()
+                  }
+                  from = square; 
                 }
                 break;
               }
