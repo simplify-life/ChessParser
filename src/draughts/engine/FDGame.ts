@@ -58,21 +58,55 @@ export interface DMove{
 export class FDGame {
 
     private board:Array<number>
-    private gameType:number
+    private type:number
     private turn:number
     private mvHistory:Array<Array<DMove>>
-    constructor(gameType:number){
-        this.gameType = gameType
-        let defaultFen = ""
-        if(gameType==International_draughts){
-            defaultFen = "W:W31-50:B1-20"
-        }else if(gameType==Brazilian_draughts){
-            defaultFen = "W:W21-32:B1-12"
-        }else{
-            throw new Error(`not support this game type : ${gameType}`);
-        }
-        this.startFromFen(defaultFen);
+
+    private startColor:number
+    private width:number
+    private height:number
+    private notation:string
+    private startDirection:number
+    private leftBottomValid:boolean
+    private startFen:string
+
+
+    constructor(gameInfo:string){
+        this.initGameInfo(gameInfo)
+        this.startFromFen(this.startFen);
     }
+
+    /**
+     * Notation: A = alpha/numeric like chess
+     *           N = numeric like draught
+     *           S = SAN - short-form notation]
+     * first Square: 0 = Bottom left
+     *               1 = Bottom right
+     *               2 = Top left
+     *               3 = Top right
+     * Invert-flag: 0 = The bottom left corner is a playing square
+     *              1 = The bottom left corner is not a playing square
+     * [type],[startColor],[boardWidth],[boardHeight],[Notation][first Square],[Invert-flag]
+     * @returns 
+     */
+    initGameInfo(gameInfo:string){
+        let infoArr = gameInfo.split(",")
+        this.type = parseInt(infoArr[0])
+        this.startColor = infoArr[1]=="W"?C_WHITE:C_BLACK
+        this.width = parseInt(infoArr[2])
+        this.height = parseInt(infoArr[3])
+        this.notation = infoArr[4][0]
+        this.startDirection = parseInt(infoArr[4][1])
+        this.leftBottomValid = infoArr[5]=="0"
+        if(this.type==20){
+            this.startFen = "W:W31-50:B1-20"
+        }
+        if(this.type==26){
+            this.startFen = "W:W21-32:B1-12"
+        }
+    }
+
+
     /**
      * S -> [FEN "[Turn]:[Color][K][Square],[K][Square]...]:[Color][K][Square], [K][Square]...]"]
      * [Color] -> 'B' | 'W'
@@ -82,7 +116,7 @@ export class FDGame {
      */
     startFromFen(fen:string){
         if(this.board == null){
-            this.board = new Array(this.boardsize()).fill(C_NONE);
+            this.board = new Array(this.width*this.height).fill(C_NONE);
         }else
         this.board.fill(C_NONE);
         this.mvHistory = []
@@ -138,22 +172,22 @@ export class FDGame {
     }
 
     pdnPos2Idx(pdnPos:number){
-        switch(this.gameType){
-            case International_draughts:
+        switch(this.type){
+            case 20:
                 var p = ~~((pdnPos-1)/5)
                 if(p%2==0) return pdnPos*2-1;
                 return pdnPos*2-2;
-            case Brazilian_draughts:
+            case 26:
                 var p = ~~((pdnPos-1)/4)
                 if(p%2==0) return pdnPos*2-1;
                 return pdnPos*2-2;
         }
-        throw new Error(`not support this game type : ${this.gameType}`);
+        throw new Error(`not support this game type : ${this.type}`);
     }
 
     idx2Pdn(idx:number){
-        switch(this.gameType){
-            case International_draughts:
+        switch(this.type){
+            case 20:
                 if(idx<99){
                     var p = ~~(idx/10)
                     if(p%2==0){
@@ -165,7 +199,7 @@ export class FDGame {
                     }
                 }
                 return -1;
-            case Brazilian_draughts:
+            case 26:
                 if(idx<63){
                     var p = ~~(idx/8)
                     if(p%2==0){
@@ -182,7 +216,7 @@ export class FDGame {
     }
 
     sanToIdx(san:string){
-        if(this.gameType==Brazilian_draughts){
+        if(this.type==26){
             let x = san.charCodeAt(0)-'a'.charCodeAt(0)
             let y = 8 - parseInt(san.substr(1))
             if(y>=0){
@@ -193,7 +227,7 @@ export class FDGame {
     }
 
     idx2San(idx:number){
-        if(this.gameType==Brazilian_draughts){
+        if(this.type==26){
             let x = idx%8
             let y = ~~(idx/8)
             return String.fromCharCode('a'.charCodeAt(0)+x)+`${8-y}`
@@ -201,23 +235,14 @@ export class FDGame {
         return ""
     }
 
-    boardsize(){
-        if(this.gameType==International_draughts){
-            return 100;
-        }else if(this.gameType==Brazilian_draughts){
-            return 64;
-        }else{
-            throw new Error(`not support this game type : ${this.gameType}`);
-        }
-    }
 
     pdnsize(){
-        if(this.gameType==International_draughts){
+        if(this.type==20){
             return 50;
-        }else if(this.gameType==Brazilian_draughts){
+        }else if(this.type==26){
             return 32;
         }else{
-            throw new Error(`not support this game type : ${this.gameType}`);
+            throw new Error(`not support this game type : ${this.type}`);
         }
     }
 
@@ -250,7 +275,6 @@ export class FDGame {
                         //     })
                         // }
                         //2.x
-                        
                     }
                 }
                 //king piece
@@ -270,21 +294,21 @@ export class FDGame {
 
     is2Bottom(pdnPos: number,color:number){
         if(color==C_BLACK){
-            switch(this.gameType){
-                case International_draughts:
+            switch(this.type){
+                case 20:
                     var p = ~~((pdnPos-1)/5)
                     return p==9
-                case Brazilian_draughts:
+                case 26:
                     var p = ~~((pdnPos-1)/4)
                     return p==7
             }
         }
         else if(color==C_WHITE){
-            switch(this.gameType){
-                case International_draughts:
+            switch(this.type){
+                case 20:
                     var p = ~~((pdnPos-1)/5)
                     return p==0
-                case Brazilian_draughts:
+                case 26:
                     var p = ~~((pdnPos-1)/4)
                     return p==0
             }
@@ -293,36 +317,17 @@ export class FDGame {
     }
 
     idxDiff(idx: number,x: number,y: number): number {
-        let xLength = this.maxX()+1
-        let ix = idx%xLength
-        let iy = ~~(idx/xLength)
+        let ix = idx%this.width
+        let iy = ~~(idx/this.width)
         let rX = ix+x
         let rY = iy+y
-        let r = rY*xLength + rX
-        if(r>=0&&r<this.boardsize())
+        let r = rY*this.width + rX
+        if(r>=0&&r<this.width*this.height)
         return r;
         return -1
     }
 
-    maxX(){
-        switch(this.gameType){
-            case International_draughts:
-                 return 9
-            case Brazilian_draughts:
-                 return 7
-        }
-        return -1
-    }
 
-    maxY(){
-        switch(this.gameType){
-            case International_draughts:
-                 return 9
-            case Brazilian_draughts:
-                 return 7
-        }
-        return -1
-    }
 
     mvScore(mv){
         /**
@@ -373,15 +378,14 @@ export class FDGame {
 
     boardDes() {
         var s = this.boardStrStart();
-        let maxX = this.maxX()+1
-        for(let i = 0; i < this.maxY()+1; i++){
+        for(let i = 0; i < this.height; i++){
             let str='   |'
-            for(let j = 0; j < maxX; j++){
-                let jStr = this.piece2Char(this.board[i*maxX + j])
+            for(let j = 0; j < this.width; j++){
+                let jStr = this.piece2Char(this.board[i*this.width + j])
                 str +=` ${jStr} |`
             }
-            s += `${str} ${this.maxY()+1-i}\n`
-            if(i!=this.maxY())
+            s += `${str} ${this.height-i}\n`
+            if(i!=this.height-1)
             s += this.boardStrline()
         }
         s += this.boardStrEnd()
@@ -390,20 +394,20 @@ export class FDGame {
     }
 
     boardStrStart(){
-        switch(this.gameType){
-            case International_draughts:
+        switch(this.type){
+            case 20:
                 return '   +---------------------------------------+\n'
-           case Brazilian_draughts:
+           case 26:
                 return "   +-------------------------------+\n"
         }
         return ""
     }
 
     boardStrline(){
-        switch(this.gameType){
-            case International_draughts:
+        switch(this.type){
+            case 20:
                 return '   +---+---+---+---+---+---+---+---+---+---+\n';
-           case Brazilian_draughts:
+           case 26:
                 return '   +---+---+---+---+---+---+---+---+\n';
         }
         return ""
@@ -414,10 +418,10 @@ export class FDGame {
     }
 
     boardSan(){
-        switch(this.gameType){
-            case International_draughts:
+        switch(this.type){
+            case 20:
                 return '     a   b   c   d   e   f   g   h   i   j\n'
-           case Brazilian_draughts:
+           case 26:
                 return '     a   b   c   d   e   f   g   h\n'
         }
         return ""
