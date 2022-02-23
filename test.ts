@@ -84,3 +84,12 @@ for(let i = 0 ; i < mvs.length ; i ++){
 let history  = game.moveHistory()
 game.reset()
 console.log(game.boardDes())
+
+import {FDGame} from './src/draughts/engine/FDGame'
+import {International_draughts,Brazilian_draughts} from './src/draughts/engine/FDConst'
+
+let dGame10x10 = new FDGame(International_draughts)
+console.log(dGame10x10.boardDes())
+
+let dGame8x8 = new FDGame(Brazilian_draughts)
+console.log(dGame8x8.boardDes())

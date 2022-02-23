@@ -3,7 +3,7 @@ import {International_draughts,Brazilian_draughts,C_NONE,C_WHITE,C_BLACK,KING,PI
 
 
 /**  International draughts
- *  +---+---+---+---+---+---+---+---+---+---+
+ *  +---------------------------------------+
  *  |   | 1 |   | 2 |   | 3 |   | 4 |   | 5 | 10
  *  +---+---+---+---+---+---+---+---+---+---+
  *  | 6 |   | 7 |   | 8 |   | 9 |   | 10|   | 9
@@ -23,14 +23,14 @@ import {International_draughts,Brazilian_draughts,C_NONE,C_WHITE,C_BLACK,KING,PI
  *  |   | 41|   | 42|   | 43|   | 44|   | 45| 2
  *  +---+---+---+---+---+---+---+---+---+---+
  *  | 46|   | 47|   | 48|   | 49|   | 50|   | 1
- *  +---+---+---+---+---+---+---+---+---+---+
+ *  +---------------------------------------+
  *    a   b   c   d   e   f   g   h   i   j
  */
 
 
 
 /**  Brazilian draughts
- *  +---+---+---+---+---+---+---+---+
+ *  +-------------------------------+
  *  |   | 1 |   | 2 |   | 3 |   | 4 | 8
  *  +---+---+---+---+---+---+---+---+
  *  | 5 |   | 6 |   | 7 |   | 8 |   | 7
@@ -46,7 +46,7 @@ import {International_draughts,Brazilian_draughts,C_NONE,C_WHITE,C_BLACK,KING,PI
  *  |   | 25|   | 26|   | 27|   | 28| 2
  *  +---+---+---+---+---+---+---+---+
  *  | 29|   | 30|   | 31|   | 32|   | 1
- *  +---+---+---+---+---+---+---+---+
+ *  +-------------------------------+
  *    a   b   c   d   e   f   g   h
  */
 export interface DMove{
@@ -81,12 +81,12 @@ export class FDGame {
      * @param fen 
      */
     startFromFen(fen:string){
-        if(this.board = null){
+        if(this.board == null){
             this.board = new Array(this.boardsize()).fill(C_NONE);
-        }
-        this.mvHistory = []
+        }else
         this.board.fill(C_NONE);
-        let fenArr = fen.split(";")
+        this.mvHistory = []
+        let fenArr = fen.split(":")
         if(fenArr.length<3){
             throw new Error(`not support this fen : ${fen}`);
         }
@@ -126,7 +126,7 @@ export class FDGame {
             if(parr.length=2){ 
                 end = parseInt(parr[1])
             }
-            for(let j = start ; j < end ; j++){
+            for(let j = start ; j <= end ; j++){
                 this.addPieceAtPdnPos(color|piece,j)
             }
         }
@@ -348,7 +348,79 @@ export class FDGame {
     }
 
     search(level: number,ms: number){
-      
+
+    }
+
+    piece2Char(piece: number){
+        if((piece & C_BLACK)==C_BLACK){
+            if((piece & PIECE)==PIECE){
+                return "p"
+            }
+            if((piece & KING)==KING){
+                return "k"
+            }
+        }
+        if((piece & C_WHITE)==C_WHITE){
+            if((piece & PIECE)==PIECE){
+                return "P"
+            }
+            if((piece & KING)==KING){
+                return "K"
+            }
+        }
+        return " ";
+    }
+
+    boardDes() {
+        var s = this.boardStrStart();
+        let maxX = this.maxX()+1
+        for(let i = 0; i < this.maxY()+1; i++){
+            let str='   |'
+            for(let j = 0; j < maxX; j++){
+                let jStr = this.piece2Char(this.board[i*maxX + j])
+                str +=` ${jStr} |`
+            }
+            s += `${str} ${this.maxY()+1-i}\n`
+            if(i!=this.maxY())
+            s += this.boardStrline()
+        }
+        s += this.boardStrEnd()
+        s += this.boardSan()
+        return s;
+    }
+
+    boardStrStart(){
+        switch(this.gameType){
+            case International_draughts:
+                return '   +---------------------------------------+\n'
+           case Brazilian_draughts:
+                return "   +-------------------------------+\n"
+        }
+        return ""
+    }
+
+    boardStrline(){
+        switch(this.gameType){
+            case International_draughts:
+                return '   +---+---+---+---+---+---+---+---+---+---+\n';
+           case Brazilian_draughts:
+                return '   +---+---+---+---+---+---+---+---+\n';
+        }
+        return ""
+    }
+
+    boardStrEnd(){
+        return this.boardStrStart()
+    }
+
+    boardSan(){
+        switch(this.gameType){
+            case International_draughts:
+                return '     a   b   c   d   e   f   g   h   i   j\n'
+           case Brazilian_draughts:
+                return '     a   b   c   d   e   f   g   h\n'
+        }
+        return ""
     }
 
 }
