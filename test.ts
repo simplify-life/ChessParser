@@ -85,11 +85,15 @@ let history  = game.moveHistory()
 game.reset()
 console.log(game.boardDes())
 
-import {FDGame} from './src/draughts/engine/FDGame'
+import {FDGame,DMove} from './src/draughts/engine/FDGame'
 import {International_draughts,Brazilian_draughts} from './src/draughts/engine/FDConst'
 
 let dGame10x10 = new FDGame(International_draughts)
 console.log(dGame10x10.boardDes())
 
 let dGame8x8 = new FDGame(Brazilian_draughts)
+// console.log(dGame8x8.boardDes())
+dGame8x8.startFromFen("B:W9,21,23-32:B1-8,10-12")
 console.log(dGame8x8.boardDes())
+let dMvs: Array<Array<DMove>> = dGame8x8.getMoveList()
+console.log(dMvs)

@@ -1,5 +1,5 @@
 
-import {International_draughts,Brazilian_draughts,C_NONE,C_WHITE,C_BLACK,KING,PIECE} from './FDConst'
+import {C_NONE,C_WHITE,C_BLACK,KING,PIECE} from './FDConst'
 
 
 /**  International draughts
@@ -157,7 +157,7 @@ export class FDGame {
             let parr = p.split("-")
             let start = parseInt(parr[0])
             let end = start
-            if(parr.length=2){ 
+            if(2==parr.length){ 
                 end = parseInt(parr[1])
             }
             for(let j = start ; j <= end ; j++){
@@ -247,34 +247,21 @@ export class FDGame {
     }
 
     getMoveList():Array<Array<DMove>>{
-        let mvList = []
+        let mvList:Array<Array<DMove>> = []
+        let eatMvs:Array<Array<DMove>> = []
+        let normalMvs:Array<Array<DMove>> = []
         for(let i = 1; i <= this.pdnsize(); i++){
             let piece = this.getPieceOnPdnPos(i)
             if((piece & this.turn)==this.turn){
                 //normal piece
                 if((piece & PIECE)==PIECE){
                     //front  2 pos
-                    if(this.turn == C_BLACK){
-                        // let lB = this.leftBottom(i)
-                        // let rB = this.rightBottom(i)
-                        // let plB = this.getPieceOnPdnPos(lB)
-                        // //1.normal
-                        // if(plB==C_NONE){
-                        //     mvList.push({
-                        //         from: i,
-                        //         to: plB,
-                        //         flag:(this.is2Bottom(plB,this.turn) ? (0|1) : 0 )
-                        //     })
-                        // }
-                        // let prB = this.getPieceOnPdnPos(rB)
-                        // if(prB==C_NONE){
-                        //     mvList.push({
-                        //         from: i,
-                        //         to: prB,
-                        //         flag:(this.is2Bottom(prB,this.turn) ? (0|1) : 0 )
-                        //     })
-                        // }
-                        //2.x
+                    this.searchPieceEatMvs(i,i,[],[],eatMvs)
+                    if(eatMvs.length==0){
+                        let mvs = this.getPieceNormalMv(i,this.turn)
+                        while(mvs.length>0){
+                            normalMvs.push([mvs.pop()])
+                        }
                     }
                 }
                 //king piece
@@ -283,7 +270,52 @@ export class FDGame {
                 }
             }
         }
+
+        if(eatMvs.length==0){
+            if(normalMvs.length>0){
+                mvList = mvList.concat(...normalMvs)
+            }
+        }else{
+            if(eatMvs.length>0){
+                eatMvs.sort((a,b)=>b.length-a.length)
+                let eatCnt = eatMvs[0].length
+                let eatMvsFilter = []
+                for(let j = 0; j < eatMvs.length; j++){
+                    if(eatMvs[j].length < eatCnt) continue;
+                    eatMvsFilter.push(eatMvs[j])
+                }
+                mvList = mvList.concat(...eatMvs)
+            }
+        }
         return mvList
+    }
+
+    getPieceNormalMv(from:number,turn: number):Array<DMove>{
+        let type = 2
+        if(turn==C_WHITE) type = 1
+        let diffPos = this.pdnPosDiff(from,type)
+        let mvs = []
+        if(diffPos[0].length>0){
+            let normalL = diffPos[0][0]
+            if(this.getPieceOnPdnPos(normalL)==C_NONE){
+                mvs.push({
+                    from:from,
+                    to:normalL,
+                    flags: (this.is2Bottom(normalL,turn) ? 1 : 0)
+                })
+            }
+        }
+        if(diffPos[1].length>0){
+            let normalR = diffPos[1][0]
+            if(this.getPieceOnPdnPos(normalR)==C_NONE){
+                mvs.push({
+                    from:from,
+                    to:normalR,
+                    flags: (this.is2Bottom(normalR,turn) ? 1 : 0)
+                })
+            }
+        }
+        return mvs;
     }
 
     getPieceOnPdnPos(pdnPos: number): number{
@@ -327,7 +359,107 @@ export class FDGame {
         return -1
     }
 
+    idxMaxDiffTopLeft(idx:number){
+        let ix = idx%this.width
+        let iy = ~~(idx/this.width)
+        let minX = 0,minY = 0
+        let maxTL = 0
+        if(ix>minX && iy>minY ){
+            while((ix- maxTL - 1)>=minX && (iy-maxTL-1)>=minY){
+                maxTL++
+            }
+        }
+        return maxTL
+    }
 
+    idxMaxDiffTopRight(idx: number){
+        let ix = idx%this.width
+        let iy = ~~(idx/this.width)
+        let minY = 0
+        let maxX = this.width-1
+        let maxTR = 0
+        if(ix<maxX && iy>minY){
+            while((ix+maxTR+1)<=maxX && (iy-maxTR-1)>= minY){
+                maxTR++
+            }
+        }
+        return maxTR
+    }
+
+    idxMaxDiffBottomLeft(idx: number){
+        let ix = idx%this.width
+        let iy = ~~(idx/this.width)
+        let minX = 0
+        let maxY = this.height-1
+        let maxBL = 0
+        if(ix>minX && iy<maxY){
+            while((ix-maxBL-1)>=minX && (iy+maxBL+1)<= maxY){
+                maxBL++
+            }
+        }
+        return maxBL
+    }
+
+    idxMaxDiffBottomRight(idx: number){
+        let ix = idx%this.width
+        let iy = ~~(idx/this.width)
+        let maxX = this.width-1,maxY = this.height-1
+        let maxBR = 0
+        if(ix<maxX && iy<maxY){
+            while((ix+maxBR+1)<=maxX && (iy+maxBR+1)<= maxY){
+                maxBR++
+            }
+        }
+        return maxBR
+    }
+
+    idxMaxDiff(idx: number,diffType: number) {
+        if(diffType==0)
+        return [this.idxMaxDiffTopLeft(idx),this.idxMaxDiffTopRight(idx),this.idxMaxDiffBottomLeft(idx),this.idxMaxDiffBottomRight(idx)]
+        if(diffType==1)
+        return [this.idxMaxDiffTopLeft(idx),this.idxMaxDiffTopRight(idx)]
+        if(diffType==2)
+        return [this.idxMaxDiffBottomLeft(idx),this.idxMaxDiffBottomRight(idx)]
+    }
+
+    /**
+     * 
+     * @param pdnPos 
+     * @param diffType 0 所有， 1 上 2 下
+     * @returns 
+     */
+    pdnPosDiff(pdnPos: number,diffType: number) {
+       let res = []
+       let idx = this.pdnPos2Idx(pdnPos)
+       let diff = this.idxMaxDiff(idx,diffType)
+       for(let i = 0; i < diff.length; i++){
+           if(diff[i]>0){
+                let r = []
+                let dX = -1,dY = -1
+                if(diffType==0){
+                    if(i==1) dX=1
+                    if(i==2) dY=1
+                    if(i==3) dX=1,dY=1
+                }
+                if(diffType==1){
+                    if(i==1) dX=1
+                }
+                if(diffType==2){
+                    if(i==0) dX=-1,dY=1
+                    if(i==1) dX=1,dY=1
+                }
+                for(let j = 1; j <= diff[i]; j++){
+                    let idxD = this.idxDiff(idx,dX*j,dY*j)
+                    if(idxD>=0)
+                        r.push(this.idx2Pdn(idxD))
+                }
+                res.push(r)
+           }else{
+             res.push([])
+           }
+       }
+       return res
+    }
 
     mvScore(mv){
         /**
@@ -425,6 +557,112 @@ export class FDGame {
                 return '     a   b   c   d   e   f   g   h\n'
         }
         return ""
+    }
+
+    /**
+     * 普通吃子搜索
+     * @param start 起点
+     * @param current 当前点
+     * @param history 历史点
+     * @param currentMv 当前吃子序列
+     * @param mvs 吃子走子集合
+     */
+    searchPieceEatMvs(start: number,current: number,history: Array<number>,currentMv: Array<DMove>,mvs: Array<Array<DMove>>){
+        if(start==current){
+            //刚开始，为了简便易行，默认start 是turn 色的棋子
+            //4格方向开始搜索
+            // let startIdx = this.pdnPos2Idx(start)
+            let diff = this.pdnPosDiff(start,0)
+            for(let i = 0 ; i < 4 ; i++){
+                let dir = diff[i]
+                let mvD:Array<DMove>= []
+                let dis = 0;
+                for(let i = 0; i < dir.length; i++){
+                    let p = dir[i]
+                    if(history.indexOf(p)!=-1) break
+                    let pi = this.getPieceOnPdnPos(p)
+                    if(pi==C_NONE){
+                        dis++
+                        continue;
+                    }
+                    if(dis>1) break;
+                    if((pi&this.turn)==this.turn){
+                        break;
+                    }
+                    if(i == dir.length - 1) break;
+                    //考虑后面 dis 是否有空位
+                    let pN = dir[i+1]
+                    if(history.indexOf(pN)!=-1) break
+                    let piN = this.getPieceOnPdnPos(pN)
+                    if(piN==C_NONE){
+                        mvD.push({
+                            from:current,
+                            to:pN,
+                            flag:2
+                        })
+                        for(let j = Math.min(current,pN); j <=Math.max(current,pN) ; j++){
+                            if(history.indexOf(j)==-1){
+                                history.push(j)
+                            }
+                        }
+                        this.searchPieceEatMvs(start,pN,history,mvD,mvs)
+                    }
+                }
+            }
+        }else{
+            //迭代搜索
+            // let startIdx = this.pdnPos2Idx(current)
+            let diff = this.pdnPosDiff(current,0)
+            let hasContinue = false
+            for(let i = 0 ; i < 4 ; i++){
+                let dir = diff[i]
+                let mvD:Array<DMove>= []
+                for(let k = 0 ; k < currentMv.length ; k++){
+                    mvD.push(currentMv[k])
+                }
+                let dis = 0;
+                for(let i = 0; i < dir.length; i++){
+                    let p = dir[i]
+                    if(history.indexOf(p)!=-1) break
+                    let pi = this.getPieceOnPdnPos(p)
+                    if(pi==C_NONE){
+                        dis++
+                        continue;
+                    }
+                    if(dis>1) break;
+                    if((pi&this.turn)==this.turn){
+                        break;
+                    }
+                    if(i == dir.length - 1) break;
+                    //考虑后面 dis 是否有空位
+                    let pN = dir[i+1]
+                    if(history.indexOf(pN)!=-1) break
+                    let piN = this.getPieceOnPdnPos(pN)
+                    if(piN==C_NONE){
+                        mvD.push({
+                            from:current,
+                            to:pN,
+                            flag:2
+                        })
+                        for(let j = Math.min(current,pN); j <=Math.max(current,pN) ; j++){
+                            if(history.indexOf(j)==-1){
+                                history.push(j)
+                            }
+                        }
+                        hasContinue = true;
+                        this.searchPieceEatMvs(start,pN,history,mvD,mvs)
+                    }
+                }
+            }
+            if(hasContinue==false){
+                if(currentMv.length>0){
+                    if(this.is2Bottom(currentMv[currentMv.length-1].to,this.turn)){
+                        currentMv[currentMv.length-1].flag |= 2
+                    }
+                    mvs.push(currentMv)
+                }
+            }
+        }
     }
 
 }
