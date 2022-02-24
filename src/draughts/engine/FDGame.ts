@@ -655,6 +655,17 @@ export class FDGame {
         return ""
     }
 
+    generatePdnBook(){
+        let book = `[GameType "${this.type}"]\n`
+            book +=`[Fen "${this.startFen}"]\n`
+            book += "\n"
+        for(let i = 0; i <this.mvHistory.length ; i ++){
+            if(i%2 == 0) book +=`  ${i/2 + 1}.${this.mvStr(this.mvHistory[i])}`
+            else book +=` ${this.mvStr(this.mvHistory[i])}`
+        }
+        return book
+    }
+
     /**
      * 普通吃子搜索
      * @param start 起点
