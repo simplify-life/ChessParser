@@ -115,6 +115,7 @@ export class FDGame {
      * @param fen 
      */
     startFromFen(fen:string){
+        this.startFen = fen
         if(this.board == null){
             this.board = new Array(this.width*this.height).fill(C_NONE);
         }else
@@ -263,10 +264,10 @@ export class FDGame {
                     }
                 }
                 //king piece
-                else if((piece & KING)==PIECE){
+                else if((piece & KING)==KING){
                     this.searchKingEatMvs(i,i,[],[],eatMvs)
                     if(eatMvs.length==0){
-                        let mvs = this.getKingNormalMv(i,this.turn)
+                        let mvs = this.getKingNormalMv(i)
                         while(mvs.length>0){
                             normalMvs.push([mvs.pop()])
                         }
@@ -305,7 +306,7 @@ export class FDGame {
                 mvs.push({
                     from:from,
                     to:normalL,
-                    flags: (this.is2Bottom(normalL,turn) ? 1 : 0)
+                    flag: (this.is2Bottom(normalL,turn) ? 1 : 0)
                 })
             }
         }
@@ -315,14 +316,14 @@ export class FDGame {
                 mvs.push({
                     from:from,
                     to:normalR,
-                    flags: (this.is2Bottom(normalR,turn) ? 1 : 0)
+                    flag: (this.is2Bottom(normalR,turn) ? 1 : 0)
                 })
             }
         }
         return mvs;
     }
 
-    getKingNormalMv(from:number,turn: number):Array<DMove>{
+    getKingNormalMv(from:number):Array<DMove>{
         let diffPos = this.pdnPosDiff(from,0)
         let mvs = []
         for(let i = 0; i < 4; i++){
@@ -333,7 +334,7 @@ export class FDGame {
                     mvs.push({
                         from:from,
                         to:pndPos,
-                        flags: 0
+                        flag: 0
                     })
                 }else continue
             }
@@ -484,6 +485,29 @@ export class FDGame {
        return res
     }
 
+    pdnRange(pdnFrom:number,pdnTo:number){
+        let from = this.pdnPos2Idx(pdnFrom)
+        let xFrom = from%this.width
+        let yFrom = ~~(from/this.width)
+        let to = this.pdnPos2Idx(pdnTo)
+        let xTo = to%this.width
+        let yTo = ~~(to/this.width)
+        let xDiff = xTo - xFrom
+        let yDiff = yTo - yFrom
+        let xAdd = xDiff>0
+        let yAdd = yDiff>0
+        // let y = xDiff>>31
+        //  xDiff = (xDiff^y)-y
+        let res = []
+        for (let i = 1; i < Math.abs(xDiff); i++){
+            let x = xAdd ? xFrom+i : xFrom - i
+            let y = yAdd ? yFrom+i : yFrom - i
+            let p = this.idx2Pdn(y*this.width+x)
+            res.push(p)
+        }
+        return res
+    }
+
     mvScore(mv){
         /**
          * 局面评估 目标->获胜/和棋
@@ -499,8 +523,57 @@ export class FDGame {
       //剪枝
     }
 
-    makeMv(){
+    makeMv(mv: Array<DMove>){
+        if(this.checkMv(mv)){
+            this.mvHistory.push(mv)
+            for(let i=0;i<mv.length;i++){
+                let idxFrom = this.pdnPos2Idx(mv[i].from)
+                let idxTo = this.pdnPos2Idx(mv[i].to)
+                let p = this.board[idxFrom]
+                if((mv[i].flag & 2) == 2){
+                    //吃子
+                    let range = this.pdnRange(mv[i].from, mv[i].to)
+                    for(let j = 0; j < range.length; j++){
+                        let jdx = this.pdnPos2Idx(range[j])
+                        this.board[jdx] = C_NONE
+                    }
+                    this.board[idxFrom] = C_NONE
+                    this.board[idxTo] = ((mv[i].flag&1)==1) ? (KING|this.turn) : p
+                }else{
+                    //普通走子
+                    this.board[idxFrom] = C_NONE
+                    let tag = (mv[i].flag&1)
+                    this.board[idxTo] = ((mv[i].flag&1)==1) ? (KING|this.turn) : p
+                    break
+                }
+            }
+            this.turn = this.turn==C_BLACK ? C_WHITE : C_BLACK
+            return true;
+        }
+        return false;
+    }
 
+    checkMv(mv: Array<DMove>){
+        let strMv = this.mvStr(mv)
+        let mvList = this.getMoveList()
+        for(let i = 0; i < mvList.length; i++){
+            if(strMv == this.mvStr(mvList[i])) return true
+        }
+        return false
+    }
+
+    mvStr(mv:Array<DMove>){
+        let san = ""
+        for(let i = 0; i < mv.length; i++){
+            if((mv[i].flag & 2) == 0){
+                san = `${mv[i].from}-${mv[i].to}`
+            }else{
+                if(i==0)
+                san += `${mv[i].from}x${mv[i].to}`
+                else san += `x${mv[i].to}`
+            }
+        }
+        return san
     }
 
     undoMv(){
@@ -514,7 +587,7 @@ export class FDGame {
     piece2Char(piece: number){
         if((piece & C_BLACK)==C_BLACK){
             if((piece & PIECE)==PIECE){
-                return "p"
+                return "b"
             }
             if((piece & KING)==KING){
                 return "k"
@@ -522,7 +595,7 @@ export class FDGame {
         }
         if((piece & C_WHITE)==C_WHITE){
             if((piece & PIECE)==PIECE){
-                return "P"
+                return "w"
             }
             if((piece & KING)==KING){
                 return "K"
@@ -599,21 +672,19 @@ export class FDGame {
             for(let k = 0 ; k < currentMv.length ; k++){
                 mvD.push(currentMv[k])
             }
-            let dis = 0;
             for(let i = 0; i < dir.length; i++){
                 let p = dir[i]
                 if(history.indexOf(p)!=-1) break
                 let pi = this.getPieceOnPdnPos(p)
-                if(pi==C_NONE){
-                    dis++
-                    continue;
-                }
-                if(dis>1) break;
+                if(pi==C_NONE) break
+
                 if((pi&this.turn)==this.turn){
                     break;
                 }
-                if(i == dir.length - 1) break;
-                //考虑后面 dis 是否有空位
+                //敌方棋子
+                if(i!=0) break;
+                //考虑后面 dis 是否有多余1个空位
+                if(dir.length<=i+1) break;
                 let pN = dir[i+1]
                 if(history.indexOf(pN)!=-1) break
                 let piN = this.getPieceOnPdnPos(pN)
@@ -623,11 +694,14 @@ export class FDGame {
                         to:pN,
                         flag:2
                     })
-                    for(let j = Math.min(current,pN); j <=Math.max(current,pN) ; j++){
-                        if(history.indexOf(j)==-1){
-                            history.push(j)
+                    let range = this.pdnRange(current,pN)
+                    for(let j = 0; j <range.length; j++){
+                        if(history.indexOf(range[j])==-1){
+                            history.push(range[j])
                         }
                     }
+                    history.push(current)
+                    history.push(pN)
                     hasContinue = true;
                     this.searchPieceEatMvs(start,pN,history,mvD,mvs)
                 }
@@ -658,10 +732,6 @@ export class FDGame {
         let hasContinue = false
         for(let i = 0 ; i < 4 ; i++){
             let dir = diff[i]
-            let mvD:Array<DMove>= []
-            for(let k = 0 ; k < currentMv.length ; k++){
-                mvD.push(currentMv[k])
-            }
             for(let i = 0; i < dir.length; i++){
                 let p = dir[i]
                 if(history.indexOf(p)!=-1) break
@@ -672,27 +742,33 @@ export class FDGame {
                 if((pi&this.turn)==this.turn){
                     break;
                 }
-                if(i == dir.length - 1) break;
                 //考虑后面 dis 是否有空位
+                if(i+1 >= dir.length) break;
                 for(let j=i+1;j<dir.length;j++){
                     let pN = dir[j]
                     if(history.indexOf(pN)!=-1) break
                     let piN = this.getPieceOnPdnPos(pN)
                     if(piN==C_NONE){
+                        let mvD:Array<DMove>= []
+                        for(let k = 0 ; k < currentMv.length ; k++){
+                            mvD.push(currentMv[k])
+                        }
                         mvD.push({
                             from:current,
                             to:pN,
                             flag:2
                         })
-                        for(let j = Math.min(current,pN); j <=Math.max(current,pN) ; j++){
-                            if(history.indexOf(j)==-1){
-                                history.push(j)
+                        let range = this.pdnRange(current,pN)
+                        for(let j = 0; j <range.length; j++){
+                            if(history.indexOf(range[j])==-1){
+                                history.push(range[j])
                             }
                         }
+                        history.push(current)
+                        history.push(pN)
                         hasContinue = true;
                         this.searchKingEatMvs(start,pN,history,mvD,mvs)
-                    }
-                    break
+                    }else break
                 }
             }
         }

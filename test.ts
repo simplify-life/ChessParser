@@ -61,7 +61,7 @@ const pgnStr = `[Event "World Championship 20th"]
 23.Ne4 Rf5 24.Nd6 Rf3 25.Nxb7 Raf8 26.Nxc5 Qf5 27.Re8 Kg8 28.Rxf8+  1-0
 `
 let game = new FCGame
-console.log(game.boardDes())
+// console.log(game.boardDes())
 
 let allCanMoves = game.generate_moves({
    square:"d2"
@@ -69,31 +69,37 @@ let allCanMoves = game.generate_moves({
 
 import {PgnParser} from './src/FPgnParser'
 import { mv2xy } from "./src/chess/engine/FCUtils"
-PgnParser.pgn = pgnStr
-let mvs = PgnParser.readPgn().allMoves()
-for(let i = 0 ; i < mvs.length ; i ++){
-    let pgnMove= mvs[i].str
-    let mv = game.move_from_san(pgnMove)
-    console.log(pgnMove)
-    let from = mv2xy(mv.from)
-    let to = mv2xy(mv.to)
-    console.log(`${i}:(${from.x},${from.y})=>(${to.x},${to.y})`)
-    game.make_move(mv)
-    console.log(game.boardDes())
-}
-let history  = game.moveHistory()
-game.reset()
-console.log(game.boardDes())
+// PgnParser.pgn = pgnStr
+// let mvs = PgnParser.readPgn().allMoves()
+// for(let i = 0 ; i < mvs.length ; i ++){
+//     let pgnMove= mvs[i].str
+//     let mv = game.move_from_san(pgnMove)
+//     console.log(pgnMove)
+//     let from = mv2xy(mv.from)
+//     let to = mv2xy(mv.to)
+//     console.log(`${i}:(${from.x},${from.y})=>(${to.x},${to.y})`)
+//     game.make_move(mv)
+//     console.log(game.boardDes())
+// }
+// let history  = game.moveHistory()
+// game.reset()
+// console.log(game.boardDes())
 
 import {FDGame,DMove} from './src/draughts/engine/FDGame'
 import {International_draughts,Brazilian_draughts} from './src/draughts/engine/FDConst'
 
 let dGame10x10 = new FDGame(International_draughts)
-console.log(dGame10x10.boardDes())
+// console.log(dGame10x10.boardDes())
 
 let dGame8x8 = new FDGame(Brazilian_draughts)
 // console.log(dGame8x8.boardDes())
-dGame8x8.startFromFen("B:W9,21,23-32:B1-8,10-12")
+dGame8x8.startFromFen("W:W7,29-31:B12,20")
 console.log(dGame8x8.boardDes())
 let dMvs: Array<Array<DMove>> = dGame8x8.getMoveList()
-console.log(dMvs)
+while(dMvs.length > 0){
+    let result = dGame8x8.makeMv(dMvs[0])
+    if(result==false) break
+    console.log(dMvs[0])
+    console.log(dGame8x8.boardDes())
+    dMvs = dGame8x8.getMoveList()
+}
