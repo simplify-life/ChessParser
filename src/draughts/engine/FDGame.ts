@@ -247,7 +247,6 @@ export class FDGame {
     }
 
     getMoveList():Array<Array<DMove>>{
-        let mvList:Array<Array<DMove>> = []
         let eatMvs:Array<Array<DMove>> = []
         let normalMvs:Array<Array<DMove>> = []
         for(let i = 1; i <= this.pdnsize(); i++){
@@ -273,7 +272,7 @@ export class FDGame {
 
         if(eatMvs.length==0){
             if(normalMvs.length>0){
-                mvList = mvList.concat(...normalMvs)
+                return normalMvs;
             }
         }else{
             if(eatMvs.length>0){
@@ -284,10 +283,10 @@ export class FDGame {
                     if(eatMvs[j].length < eatCnt) continue;
                     eatMvsFilter.push(eatMvs[j])
                 }
-                mvList = mvList.concat(...eatMvs)
+               return eatMvsFilter
             }
         }
-        return mvList
+        return []
     }
 
     getPieceNormalMv(from:number,turn: number):Array<DMove>{
