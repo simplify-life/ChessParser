@@ -254,7 +254,6 @@ export class FDGame {
             if((piece & this.turn)==this.turn){
                 //normal piece
                 if((piece & PIECE)==PIECE){
-                    //front  2 pos
                     this.searchPieceEatMvs(i,i,[],[],eatMvs)
                     if(eatMvs.length==0){
                         let mvs = this.getPieceNormalMv(i,this.turn)
@@ -265,7 +264,13 @@ export class FDGame {
                 }
                 //king piece
                 else if((piece & KING)==PIECE){
-
+                    this.searchKingEatMvs(i,i,[],[],eatMvs)
+                    if(eatMvs.length==0){
+                        let mvs = this.getKingNormalMv(i,this.turn)
+                        while(mvs.length>0){
+                            normalMvs.push([mvs.pop()])
+                        }
+                    }
                 }
             }
         }
@@ -312,6 +317,25 @@ export class FDGame {
                     to:normalR,
                     flags: (this.is2Bottom(normalR,turn) ? 1 : 0)
                 })
+            }
+        }
+        return mvs;
+    }
+
+    getKingNormalMv(from:number,turn: number):Array<DMove>{
+        let diffPos = this.pdnPosDiff(from,0)
+        let mvs = []
+        for(let i = 0; i < 4; i++){
+            let diff = diffPos[0]
+            for(let j = 0; j < diff.length; j++){
+                let pndPos = diff[j]
+                if(this.getPieceOnPdnPos(pndPos)==C_NONE){
+                    mvs.push({
+                        from:from,
+                        to:pndPos,
+                        flags: 0
+                    })
+                }else continue
             }
         }
         return mvs;
@@ -567,74 +591,91 @@ export class FDGame {
      * @param mvs 吃子走子集合
      */
     searchPieceEatMvs(start: number,current: number,history: Array<number>,currentMv: Array<DMove>,mvs: Array<Array<DMove>>){
-        if(start==current){
-            //刚开始，为了简便易行，默认start 是turn 色的棋子
-            //4格方向开始搜索
-            // let startIdx = this.pdnPos2Idx(start)
-            let diff = this.pdnPosDiff(start,0)
-            for(let i = 0 ; i < 4 ; i++){
-                let dir = diff[i]
-                let mvD:Array<DMove>= []
-                let dis = 0;
-                for(let i = 0; i < dir.length; i++){
-                    let p = dir[i]
-                    if(history.indexOf(p)!=-1) break
-                    let pi = this.getPieceOnPdnPos(p)
-                    if(pi==C_NONE){
-                        dis++
-                        continue;
-                    }
-                    if(dis>1) break;
-                    if((pi&this.turn)==this.turn){
-                        break;
-                    }
-                    if(i == dir.length - 1) break;
-                    //考虑后面 dis 是否有空位
-                    let pN = dir[i+1]
-                    if(history.indexOf(pN)!=-1) break
-                    let piN = this.getPieceOnPdnPos(pN)
-                    if(piN==C_NONE){
-                        mvD.push({
-                            from:current,
-                            to:pN,
-                            flag:2
-                        })
-                        for(let j = Math.min(current,pN); j <=Math.max(current,pN) ; j++){
-                            if(history.indexOf(j)==-1){
-                                history.push(j)
-                            }
+        let diff = this.pdnPosDiff(current,0)
+        let hasContinue = false
+        for(let i = 0 ; i < 4 ; i++){
+            let dir = diff[i]
+            let mvD:Array<DMove>= []
+            for(let k = 0 ; k < currentMv.length ; k++){
+                mvD.push(currentMv[k])
+            }
+            let dis = 0;
+            for(let i = 0; i < dir.length; i++){
+                let p = dir[i]
+                if(history.indexOf(p)!=-1) break
+                let pi = this.getPieceOnPdnPos(p)
+                if(pi==C_NONE){
+                    dis++
+                    continue;
+                }
+                if(dis>1) break;
+                if((pi&this.turn)==this.turn){
+                    break;
+                }
+                if(i == dir.length - 1) break;
+                //考虑后面 dis 是否有空位
+                let pN = dir[i+1]
+                if(history.indexOf(pN)!=-1) break
+                let piN = this.getPieceOnPdnPos(pN)
+                if(piN==C_NONE){
+                    mvD.push({
+                        from:current,
+                        to:pN,
+                        flag:2
+                    })
+                    for(let j = Math.min(current,pN); j <=Math.max(current,pN) ; j++){
+                        if(history.indexOf(j)==-1){
+                            history.push(j)
                         }
-                        this.searchPieceEatMvs(start,pN,history,mvD,mvs)
                     }
+                    hasContinue = true;
+                    this.searchPieceEatMvs(start,pN,history,mvD,mvs)
                 }
             }
-        }else{
-            //迭代搜索
-            // let startIdx = this.pdnPos2Idx(current)
-            let diff = this.pdnPosDiff(current,0)
-            let hasContinue = false
-            for(let i = 0 ; i < 4 ; i++){
-                let dir = diff[i]
-                let mvD:Array<DMove>= []
-                for(let k = 0 ; k < currentMv.length ; k++){
-                    mvD.push(currentMv[k])
+        }
+        if(hasContinue==false){
+            if(currentMv.length>0){
+                if(this.is2Bottom(currentMv[currentMv.length-1].to,this.turn)){
+                    currentMv[currentMv.length-1].flag |= 2
                 }
-                let dis = 0;
-                for(let i = 0; i < dir.length; i++){
-                    let p = dir[i]
-                    if(history.indexOf(p)!=-1) break
-                    let pi = this.getPieceOnPdnPos(p)
-                    if(pi==C_NONE){
-                        dis++
-                        continue;
-                    }
-                    if(dis>1) break;
-                    if((pi&this.turn)==this.turn){
-                        break;
-                    }
-                    if(i == dir.length - 1) break;
-                    //考虑后面 dis 是否有空位
-                    let pN = dir[i+1]
+                mvs.push(currentMv)
+            }
+        }
+    }
+
+    /**
+     * 后吃子搜索
+     * @param start 起点
+     * @param current 当前点
+     * @param history 历史点
+     * @param currentMv 当前吃子序列
+     * @param mvs 吃子走子集合
+     */
+     searchKingEatMvs(start: number,current: number,history: Array<number>,currentMv: Array<DMove>,mvs: Array<Array<DMove>>){
+        //迭代搜索
+        // let startIdx = this.pdnPos2Idx(current)
+        let diff = this.pdnPosDiff(current,0)
+        let hasContinue = false
+        for(let i = 0 ; i < 4 ; i++){
+            let dir = diff[i]
+            let mvD:Array<DMove>= []
+            for(let k = 0 ; k < currentMv.length ; k++){
+                mvD.push(currentMv[k])
+            }
+            for(let i = 0; i < dir.length; i++){
+                let p = dir[i]
+                if(history.indexOf(p)!=-1) break
+                let pi = this.getPieceOnPdnPos(p)
+                if(pi==C_NONE){
+                    continue;
+                }
+                if((pi&this.turn)==this.turn){
+                    break;
+                }
+                if(i == dir.length - 1) break;
+                //考虑后面 dis 是否有空位
+                for(let j=i+1;j<dir.length;j++){
+                    let pN = dir[j]
                     if(history.indexOf(pN)!=-1) break
                     let piN = this.getPieceOnPdnPos(pN)
                     if(piN==C_NONE){
@@ -649,17 +690,15 @@ export class FDGame {
                             }
                         }
                         hasContinue = true;
-                        this.searchPieceEatMvs(start,pN,history,mvD,mvs)
+                        this.searchKingEatMvs(start,pN,history,mvD,mvs)
                     }
+                    break
                 }
             }
-            if(hasContinue==false){
-                if(currentMv.length>0){
-                    if(this.is2Bottom(currentMv[currentMv.length-1].to,this.turn)){
-                        currentMv[currentMv.length-1].flag |= 2
-                    }
-                    mvs.push(currentMv)
-                }
+        }
+        if(hasContinue==false){
+            if(currentMv.length>0){
+                mvs.push(currentMv)
             }
         }
     }

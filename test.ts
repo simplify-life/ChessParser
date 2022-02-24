@@ -93,7 +93,7 @@ console.log(dGame10x10.boardDes())
 
 let dGame8x8 = new FDGame(Brazilian_draughts)
 // console.log(dGame8x8.boardDes())
-dGame8x8.startFromFen("W:W9,21,23-32:B1-8,10-12")
+dGame8x8.startFromFen("B:W9,21,23-32:B1-8,10-12")
 console.log(dGame8x8.boardDes())
 let dMvs: Array<Array<DMove>> = dGame8x8.getMoveList()
 console.log(dMvs)
