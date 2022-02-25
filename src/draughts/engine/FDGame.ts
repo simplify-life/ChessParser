@@ -1,5 +1,5 @@
 
-import {C_NONE,C_WHITE,C_BLACK,KING,PIECE} from './FDConst'
+import {NONE,C_WHITE,C_BLACK,KING,PAWNS,DRAW} from './FDConst'
 
 
 /**  International draughts
@@ -53,6 +53,18 @@ export interface DMove{
     from: number,
     to:number,
     flag:number,//0 normal , 1 peice grade king, 2 x
+    eatPos?:number,
+    eatPiece?:number
+    kingMove?:boolean
+}
+
+export class DrawRule{
+    //同局面次数
+    homeType:number
+    //只移动王回合数
+    kingMove:number
+    //3特殊子数回合
+    pieceNum:Array<{piece:string,step:number}>
 }
 
 export class FDGame {
@@ -69,8 +81,32 @@ export class FDGame {
     private startDirection:number
     private leftBottomValid:boolean
     private startFen:string
+    private fenHistory:Array<string>
+    /**
+     *[white pawn,white king, black pawn, black king]
+     */
+    private pieceCnt:Array<number>
 
+    private result:number // 0 未知 1 黑胜 2 白胜 3 和棋 
+    private reason:number // 0。 未知 1。 吃光 2。 无子可动 3。 三次同型  4。 25回合/15回合 5。一王一王/5回合 6。两王一王5回合 7。三王对1王 16 回合 8. 三王对2王 16回合 9. 一王一王一普通
 
+    //1同型次数 2只动王回合 3特殊子数回合
+    /**
+     * 100:[3,25,{"0,1,0,1":5,"0,1,0,2":5,"0,2,0,1":5,"0,3,0,1":16,"0,1,0,3":16,"0,3,0,2":16,"0,2,0,3":16}]
+     * 64:[3,15,{"0,1,0,1":5,"1,1,0,1":5,"0,1,1,1":5,"0,1,0,2":5,"0,2,0,1":5}]
+     */
+    private drawRule:DrawRule
+    setDrawRule(drawRule:DrawRule):void{
+        this.drawRule = drawRule;
+        this.gameDraw = new DrawRule()
+        this.gameDraw.homeType = 0
+        this.gameDraw.kingMove = 0
+        this.gameDraw.pieceNum = []
+        for(var i = 0; i <drawRule.pieceNum.length ; i++){
+            this.gameDraw.pieceNum.push({piece:drawRule.pieceNum[i].piece,step:0})
+        }
+    }
+    private gameDraw:DrawRule
     constructor(gameInfo:string){
         this.initGameInfo(gameInfo)
         this.startFromFen(this.startFen);
@@ -116,12 +152,20 @@ export class FDGame {
      */
     startFromFen(fen:string){
         this.startFen = fen
-        if(this.board == null){
-            this.board = new Array(this.width*this.height).fill(C_NONE);
-        }else
-        this.board.fill(C_NONE);
+        this.pieceCnt = [0,0,0,0]
         this.mvHistory = []
+        this.boardFromFen(fen)
+        this.fenHistory = [this.getFen()]
+    }
+
+    boardFromFen(fen:string){
+        this.result = 0
+        if(this.board == null){
+            this.board = new Array(this.width*this.height).fill(NONE);
+        }else
+        this.board.fill(NONE);
         let fenArr = fen.split(":")
+
         if(fenArr.length<3){
             throw new Error(`not support this fen : ${fen}`);
         }
@@ -140,20 +184,25 @@ export class FDGame {
      * [Color][K][Square], [K][Square]...
      */
      readPieceFromFen(fenPiece:string){
-         let color = C_NONE
+         let color = NONE
+         let cntIdx = -1
         if(fenPiece[0]=="W"){
             color = C_WHITE
+            cntIdx = 0
         }else if(fenPiece[0]=="B"){
             color = C_BLACK
+            cntIdx = 2
         }
         fenPiece = fenPiece.substr(1)
         let pieceArr = fenPiece.split(",")
         for(let i = 0 ; i < pieceArr.length ; i ++){
             let p = pieceArr[i]
-            let piece = PIECE
+            let piece = PAWNS
+            let diffCnt = 0
             if(p.startsWith('K')){
                 piece = KING
                 p = p.substr(1)
+                diffCnt = 1
             }
             let parr = p.split("-")
             let start = parseInt(parr[0])
@@ -162,6 +211,7 @@ export class FDGame {
                 end = parseInt(parr[1])
             }
             for(let j = start ; j <= end ; j++){
+                this.pieceCnt[cntIdx+diffCnt]++
                 this.addPieceAtPdnPos(color|piece,j)
             }
         }
@@ -254,7 +304,7 @@ export class FDGame {
             let piece = this.getPieceOnPdnPos(i)
             if((piece & this.turn)==this.turn){
                 //normal piece
-                if((piece & PIECE)==PIECE){
+                if((piece & PAWNS)==PAWNS){
                     this.searchPieceEatMvs(i,i,[],[],eatMvs)
                     if(eatMvs.length==0){
                         let mvs = this.getPieceNormalMv(i,this.turn)
@@ -302,21 +352,23 @@ export class FDGame {
         let mvs = []
         if(diffPos[0].length>0){
             let normalL = diffPos[0][0]
-            if(this.getPieceOnPdnPos(normalL)==C_NONE){
+            if(this.getPieceOnPdnPos(normalL)==NONE){
                 mvs.push({
                     from:from,
                     to:normalL,
-                    flag: (this.is2Bottom(normalL,turn) ? 1 : 0)
+                    flag: (this.is2Bottom(normalL,turn) ? 1 : 0),
+                    kingMove:false
                 })
             }
         }
         if(diffPos[1].length>0){
             let normalR = diffPos[1][0]
-            if(this.getPieceOnPdnPos(normalR)==C_NONE){
+            if(this.getPieceOnPdnPos(normalR)==NONE){
                 mvs.push({
                     from:from,
                     to:normalR,
-                    flag: (this.is2Bottom(normalR,turn) ? 1 : 0)
+                    flag: (this.is2Bottom(normalR,turn) ? 1 : 0),
+                    kingMove:false
                 })
             }
         }
@@ -330,11 +382,12 @@ export class FDGame {
             let diff = diffPos[0]
             for(let j = 0; j < diff.length; j++){
                 let pndPos = diff[j]
-                if(this.getPieceOnPdnPos(pndPos)==C_NONE){
+                if(this.getPieceOnPdnPos(pndPos)==NONE){
                     mvs.push({
                         from:from,
                         to:pndPos,
-                        flag: 0
+                        flag: 0,
+                        kingMove:true
                     })
                 }else continue
             }
@@ -508,14 +561,10 @@ export class FDGame {
         return res
     }
 
-    mvScore(mv){
+    score(){
         /**
-         * 局面评估 目标->获胜/和棋
-         * 1. 普通 棋子---1子+1
-         * 2. 王 --------1子+10
-         * 3. 吃子(含胜败)----1子+1，1王+10 获胜+999
-         * 4. 可走着法数目---- 有着法 +0 无着法 +999
-         * 5. 是否符合和棋----看目标 。目标和棋，则 +999,否则-999
+         * 1.this.turn: pawns +1 ,king +2 
+         *   other: pawns -1 ,king -2 
          */
     }
 
@@ -523,43 +572,160 @@ export class FDGame {
       //剪枝
     }
 
-    makeMv(mv: Array<DMove>){
-        if(this.checkMv(mv)){
+    makeMv(cMv: Array<DMove>){
+        if(this.result!=0) return false;
+        let  mv = this.checkMv(cMv);
+        if(mv!=null){
             this.mvHistory.push(mv)
+            let handlerEat = true
             for(let i=0;i<mv.length;i++){
                 let idxFrom = this.pdnPos2Idx(mv[i].from)
                 let idxTo = this.pdnPos2Idx(mv[i].to)
                 let p = this.board[idxFrom]
                 if((mv[i].flag & 2) == 2){
                     //吃子
-                    let range = this.pdnRange(mv[i].from, mv[i].to)
-                    for(let j = 0; j < range.length; j++){
-                        let jdx = this.pdnPos2Idx(range[j])
-                        this.board[jdx] = C_NONE
+                    if((mv[i].flag&1)==1){
+                        //升变
+                        this.pieceCnt[this.turn==C_WHITE ? 0 : 2]--
+                        this.pieceCnt[this.turn==C_WHITE ? 1 : 3]++
                     }
-                    this.board[idxFrom] = C_NONE
+                    let idxEat = this.pdnPos2Idx(mv[i].eatPos)
+                    this.board[idxEat] = NONE
+                    let eatKing = ((mv[i].eatPiece&KING)==KING)
+                    if(eatKing){
+                        this.pieceCnt[this.turn==C_WHITE ? 3 : 1]--
+                    }else{
+                        this.pieceCnt[this.turn==C_WHITE ? 2 : 0]--
+                    }
+                    this.board[idxFrom] = NONE
                     this.board[idxTo] = ((mv[i].flag&1)==1) ? (KING|this.turn) : p
+                    if(handlerEat){
+                        handlerEat = false
+                        this.gameDraw.kingMove = 0
+                        for (let i = 0; i < this.gameDraw.pieceNum.length ; i ++){
+                            this.gameDraw.pieceNum[i].step=0;
+                        }
+                    }
                 }else{
                     //普通走子
-                    this.board[idxFrom] = C_NONE
-                    let tag = (mv[i].flag&1)
+                    if((this.board[idxFrom] & KING)==KING) this.gameDraw.kingMove++
+                    else this.gameDraw.kingMove = 0
+                    this.board[idxFrom] = NONE
                     this.board[idxTo] = ((mv[i].flag&1)==1) ? (KING|this.turn) : p
-                    break
+                    if((mv[i].flag&1)==1){
+                        //升变
+                        this.pieceCnt[this.turn==C_WHITE ? 0 : 2]--
+                        this.pieceCnt[this.turn==C_WHITE ? 1 : 3]++
+                    }
+                    this.turn = this.turn==C_BLACK ? C_WHITE : C_BLACK
+                    this.gameDraw.homeType = this.homeTypeCount(this.getFen())
+                    this.fenHistory.push(this.getFen())
+                    return true
                 }
             }
             this.turn = this.turn==C_BLACK ? C_WHITE : C_BLACK
+            this.fenHistory.push(this.getFen())
+            this.pieceNumKeyCheck()
             return true;
         }
         return false;
+    }
+
+    undo(): void {
+        if(this.mvHistory.length>0){
+            this.turn = this.turn==C_BLACK ? C_WHITE : C_BLACK
+            this.fenHistory.pop()
+            let mvs = this.mvHistory.pop()
+            let undoMv = mvs[0]
+            if((undoMv.flag & 2) == 2){
+                let len = mvs.length
+                for(let i = len - 1 ; i >= 0 ; i--){
+                    let mv = mvs[i]
+                    let from = this.pdnPos2Idx(mv.from)
+                    let to = this.pdnPos2Idx(mv.to)
+                    this.board[from] = this.board[to]
+                    this.board[to] = NONE
+                    if((mv.flag & 1) == 1){
+                        this.board[from] = this.turn | PAWNS
+                        //升变
+                        this.pieceCnt[this.turn==C_WHITE ? 0 : 2]++
+                        this.pieceCnt[this.turn==C_WHITE ? 1 : 3]--
+                    }
+                    let eatPos = this.pdnPos2Idx(mv.eatPos)
+                    this.board[eatPos] = mv.eatPiece
+                    let eatKing = ((mv.eatPiece&KING)==KING)
+                    if(eatKing){
+                        this.pieceCnt[this.turn==C_WHITE ? 3 : 1]++
+                    }else{
+                        this.pieceCnt[this.turn==C_WHITE ? 2 : 0]++
+                    }
+                }
+                this.gameDraw.kingMove = 0
+                let breakKingMove = false
+                for (var i = this.mvHistory.length - 1 ; i >= 0 ; i--){
+                       //step? kingMove && pieceNum step ,from history
+                       let mvs = this.mvHistory[i]
+                       if((mvs[0].flag & 2) == 2 || (mvs[0].flag & 1) == 1) {
+                           if(i==0){
+                               //归零
+                               this.gameDraw.kingMove = 0
+                               for (let i = 0; i < this.gameDraw.pieceNum.length ; i ++){
+                                this.gameDraw.pieceNum[i].step = 0
+                               }
+                           }
+                           break
+                       }
+                       if(mvs[0].kingMove){
+                           if(breakKingMove==false)
+                           this.gameDraw.kingMove++ 
+                       }else{
+                           breakKingMove = true
+                       }
+                       this.pieceNumKeyCheck()
+                }
+            }else{
+                //普通走子
+                let from = this.pdnPos2Idx(undoMv.from)
+                let to = this.pdnPos2Idx(undoMv.to)
+                this.board[from] = this.board[to]
+                if((undoMv.flag & 1) == 1){
+                    this.board[from] = this.turn | PAWNS
+                }
+                for (let i = 0; i < this.gameDraw.pieceNum.length ; i ++){
+                    if(this.gameDraw.pieceNum[i].step > 0){
+                        this.gameDraw.pieceNum[i].step--;
+                    }
+                }
+                if(this.gameDraw.homeType>0) this.gameDraw.homeType--
+                if(this.gameDraw.kingMove>0) this.gameDraw.kingMove--
+                if((undoMv.flag&1)==1){
+                    //升变
+                    this.pieceCnt[this.turn==C_WHITE ? 0 : 2]++
+                    this.pieceCnt[this.turn==C_WHITE ? 1 : 3]--
+                }
+            }
+            this.result = 0
+        }
+    }
+
+    pieceNumKeyCheck(){
+        let key = this.pieceCnt.join()
+        for (let i = 0; i < this.gameDraw.pieceNum.length ; i ++){
+            if(this.gameDraw.pieceNum[i].piece == key){
+                this.gameDraw.pieceNum[i].step++;
+            }else{
+                this.gameDraw.pieceNum[i].step=0;
+            }
+        }
     }
 
     checkMv(mv: Array<DMove>){
         let strMv = this.mvStr(mv)
         let mvList = this.getMoveList()
         for(let i = 0; i < mvList.length; i++){
-            if(strMv == this.mvStr(mvList[i])) return true
+            if(strMv == this.mvStr(mvList[i])) return mvList[i]
         }
-        return false
+        return null
     }
 
     mvStr(mv:Array<DMove>){
@@ -586,7 +752,7 @@ export class FDGame {
 
     piece2Char(piece: number){
         if((piece & C_BLACK)==C_BLACK){
-            if((piece & PIECE)==PIECE){
+            if((piece & PAWNS)==PAWNS){
                 return "b"
             }
             if((piece & KING)==KING){
@@ -594,7 +760,7 @@ export class FDGame {
             }
         }
         if((piece & C_WHITE)==C_WHITE){
-            if((piece & PIECE)==PIECE){
+            if((piece & PAWNS)==PAWNS){
                 return "w"
             }
             if((piece & KING)==KING){
@@ -658,12 +824,21 @@ export class FDGame {
     generatePdnBook(){
         let book = `[GameType "${this.type}"]\n`
             book +=`[Fen "${this.startFen}"]\n`
+            book +=`[Result "${this.resultStr()}"]\n`
             book += "\n"
         for(let i = 0; i <this.mvHistory.length ; i ++){
             if(i%2 == 0) book +=`  ${i/2 + 1}.${this.mvStr(this.mvHistory[i])}`
             else book +=` ${this.mvStr(this.mvHistory[i])}`
         }
+        book +=` ${this.resultStr()}`
         return book
+    }
+
+    resultStr(){
+       if(this.result==0) return "*"
+       if(this.result==DRAW) return "1-1"
+       if(this.result==C_WHITE) return "2-0"
+       if(this.result==C_BLACK) return "0-2"
     }
 
     /**
@@ -687,7 +862,7 @@ export class FDGame {
                 let p = dir[i]
                 if(history.indexOf(p)!=-1) break
                 let pi = this.getPieceOnPdnPos(p)
-                if(pi==C_NONE) break
+                if(pi==NONE) break
 
                 if((pi&this.turn)==this.turn){
                     break;
@@ -699,11 +874,13 @@ export class FDGame {
                 let pN = dir[i+1]
                 if(history.indexOf(pN)!=-1) break
                 let piN = this.getPieceOnPdnPos(pN)
-                if(piN==C_NONE){
+                if(piN==NONE){
                     mvD.push({
                         from:current,
                         to:pN,
-                        flag:2
+                        flag:2,
+                        eatPos:dir[i],
+                        eatPiece:pi
                     })
                     let range = this.pdnRange(current,pN)
                     for(let j = 0; j <range.length; j++){
@@ -747,7 +924,7 @@ export class FDGame {
                 let p = dir[i]
                 if(history.indexOf(p)!=-1) break
                 let pi = this.getPieceOnPdnPos(p)
-                if(pi==C_NONE){
+                if(pi==NONE){
                     continue;
                 }
                 if((pi&this.turn)==this.turn){
@@ -759,7 +936,7 @@ export class FDGame {
                     let pN = dir[j]
                     if(history.indexOf(pN)!=-1) break
                     let piN = this.getPieceOnPdnPos(pN)
-                    if(piN==C_NONE){
+                    if(piN==NONE){
                         let mvD:Array<DMove>= []
                         for(let k = 0 ; k < currentMv.length ; k++){
                             mvD.push(currentMv[k])
@@ -767,7 +944,10 @@ export class FDGame {
                         mvD.push({
                             from:current,
                             to:pN,
-                            flag:2
+                            flag:2,
+                            eatPos:p,
+                            eatPiece:pi,
+                            kingMove:true
                         })
                         let range = this.pdnRange(current,pN)
                         for(let j = 0; j <range.length; j++){
@@ -790,4 +970,78 @@ export class FDGame {
         }
     }
 
+    /**
+     * @todo short fen
+     * @param board 
+     * @returns 
+     */
+    board2Fen(board:Array<number>):string{
+        //"W:W7,29-31:B12,20"
+        let res = `${this.turn==C_BLACK ? "B" : "W"}`
+        let w = "W"
+        let b = "B"
+        for(let i = 0; i < board.length; i++){
+            let p = board[i];
+            if((board[i]&PAWNS) == PAWNS && (board[i]&C_BLACK) == C_BLACK){
+                if(b.length>1) b+=","
+                b+=`${this.idx2Pdn(i)}`
+            }
+            if((board[i]&PAWNS) == PAWNS && (board[i]&C_WHITE) == C_WHITE){
+                if(w.length>1) w+=","
+                w+=`${this.idx2Pdn(i)}`
+            }
+            if((board[i]&KING) == KING && (board[i]&C_BLACK) == C_BLACK){
+                if(b.length>1) b+=","
+                b+=`K${this.idx2Pdn(i)}`
+            }
+            if((board[i]&KING) == KING && (board[i]&C_WHITE) == C_WHITE){
+                if(w.length>1) w+=","
+                w+=`K${this.idx2Pdn(i)}`
+            }
+        }
+        return `${res}:${w}:${b}`
+    }
+
+    getFen():string{
+        return this.board2Fen(this.board)
+    }
+
+    checkEnd(){
+        //Draw 1-1
+        if(this.gameDraw.kingMove >= this.drawRule.kingMove){
+            //draw,只走王
+            this.result = DRAW
+            return true
+        }
+        if(this.gameDraw.homeType >= this.drawRule.homeType){
+            //局面重复
+            this.result = DRAW
+            return true
+        }
+
+        for(let i = 0; i < this.drawRule.pieceNum.length ; i ++ ){
+            if(this.gameDraw.pieceNum[i].step>=this.drawRule.pieceNum[i].step){
+                //特殊局面
+                this.result = DRAW
+                return true
+            }
+        }
+        let mvs = this.getMoveList()
+        if(mvs.length<1){
+            this.result = this.turn == C_WHITE ? C_BLACK : C_WHITE
+            return true
+        }
+        return false
+    }
+
+    homeTypeCount(fen: string){
+        let cnt = 0
+        let len = this.fenHistory.length
+        for (let i = 0; i < len;i++){
+            if(this.fenHistory[i] == fen){
+                cnt++;
+            }
+        }
+        return cnt
+    }
 }

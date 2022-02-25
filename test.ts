@@ -85,7 +85,7 @@ import { mv2xy } from "./src/chess/engine/FCUtils"
 // game.reset()
 // console.log(game.boardDes())
 
-import {FDGame,DMove} from './src/draughts/engine/FDGame'
+import {FDGame,DMove,DrawRule} from './src/draughts/engine/FDGame'
 import {International_draughts,Brazilian_draughts} from './src/draughts/engine/FDConst'
 
 let dGame10x10 = new FDGame(International_draughts)
@@ -95,12 +95,25 @@ let dGame8x8 = new FDGame(Brazilian_draughts)
 // console.log(dGame8x8.boardDes())
 // dGame8x8.startFromFen("W:W7,29-31:B12,20")
 console.log(dGame8x8.boardDes())
+let fen = dGame8x8.getFen()
+console.log(fen)
+dGame8x8.startFromFen(fen)
+console.log(dGame8x8.boardDes())
+let rule64 = new DrawRule()
+//64:[3,15,{"0,1,0,1":5,"1,1,0,1":5,"0,1,1,1":5,"0,1,0,2":5,"0,2,0,1":5}]
+rule64.homeType = 3
+rule64.kingMove = 30
+rule64.pieceNum = [{piece:"0,1,0,1",step:10},{piece:"1,1,0,1",step:10},{piece:"0,1,1,1",step:10},{piece:"0,1,0,2",step:10},{piece:"0,2,0,1",step:10}]
+dGame8x8.setDrawRule(rule64)
+
 let dMvs: Array<Array<DMove>> = dGame8x8.getMoveList()
 while(dMvs.length > 0){
     let result = dGame8x8.makeMv(dMvs[0])
     if(result==false) break
+    dGame8x8.checkEnd()
     console.log(dMvs[0])
     console.log(dGame8x8.boardDes())
     dMvs = dGame8x8.getMoveList()
 }
 console.log(dGame8x8.generatePdnBook())
+
