@@ -95,7 +95,7 @@ export class FDGame {
      * 100:[3,25,{"0,1,0,1":5,"0,1,0,2":5,"0,2,0,1":5,"0,3,0,1":16,"0,1,0,3":16,"0,3,0,2":16,"0,2,0,3":16}]
      * 64:[3,15,{"0,1,0,1":5,"1,1,0,1":5,"0,1,1,1":5,"0,1,0,2":5,"0,2,0,1":5}]
      */
-    private drawRule:DrawRule
+    public drawRule:DrawRule
     setDrawRule(drawRule:DrawRule):void{
         this.drawRule = drawRule;
         this.gameDraw = new DrawRule()
@@ -106,9 +106,9 @@ export class FDGame {
             this.gameDraw.pieceNum.push({piece:drawRule.pieceNum[i].piece,step:0})
         }
     }
-    private gameDraw:DrawRule
+    public gameDraw:DrawRule
 
-    constructor(private gameInfo:string){
+    constructor(public gameInfo:string){
         this.initGameInfo(gameInfo)
         this.startFromFen(this.startFen);
     }
@@ -380,7 +380,7 @@ export class FDGame {
         let diffPos = this.pdnPosDiff(from,0)
         let mvs = []
         for(let i = 0; i < 4; i++){
-            let diff = diffPos[0]
+            let diff = diffPos[i]
             for(let j = 0; j < diff.length; j++){
                 let pndPos = diff[j]
                 if(this.getPieceOnPdnPos(pndPos)==NONE){
@@ -562,13 +562,6 @@ export class FDGame {
         return res
     }
 
-    score(fen:string,isPlayer:boolean):number{
-        let g = new FDGame(this.gameInfo)
-        g.startFromFen(fen)
-        g.setDrawRule(this.drawRule)
-        return isPlayer ? g.playerScore() : -g.playerScore()
-    }
-
     playerScore(){
         /**
          * Pawn’s value: 5 + row number King’s value = 5 + # of rows + 2
@@ -598,16 +591,12 @@ export class FDGame {
                 let y = ~~(i/this.width)
                 let s = Math.min(x-0,y-0) + Math.min(this.width-1-x,y-0)
                        +Math.min(x-0,this.height-1-y)
-                       +Math.min(this.width-1-x,this.height-1-y)+5+2
+                       +Math.min(this.width-1-x,this.height-1-y)+8
                 if((p & this.turn) == this.turn) score +=s
                 else score -=s
             }
         }
         return score
-    }
-
-    pruning(){
-      //剪枝
     }
 
     makeMv(cMv: Array<DMove>){
@@ -795,11 +784,6 @@ export class FDGame {
         return san
     }
 
-
-    search(level: number,ms: number){
-
-    }
-
     piece2Char(piece: number){
         if((piece & C_BLACK)==C_BLACK){
             if((piece & PAWNS)==PAWNS){
@@ -830,7 +814,7 @@ export class FDGame {
             }
             s += `${str} ${this.height-i}\n`
             if(i!=this.height-1)
-            s += this.boardStrline()
+            s += this.boardStrLine()
         }
         s += this.boardStrEnd()
         s += this.boardSan()
@@ -847,7 +831,7 @@ export class FDGame {
         return ""
     }
 
-    boardStrline(){
+    boardStrLine(){
         switch(this.type){
             case 20:
                 return '   +---+---+---+---+---+---+---+---+---+---+\n';
@@ -949,7 +933,7 @@ export class FDGame {
         if(hasContinue==false){
             if(currentMv.length>0){
                 if(this.is2Bottom(currentMv[currentMv.length-1].to,this.turn)){
-                    currentMv[currentMv.length-1].flag |= 2
+                    currentMv[currentMv.length-1].flag |= 1
                 }
                 mvs.push(currentMv)
             }
@@ -1094,9 +1078,49 @@ export class FDGame {
             }
         }
         return cnt
+    } 
+
+}
+
+export class DSearch {
+
+    private game:FDGame
+    constructor(){}
+    
+    getBestMv(depth:number,game:FDGame){
+        this.game = game
+        console.time(`getBestMv:${depth}`)
+        let v = Number.MIN_SAFE_INTEGER
+        let bestMv:DMove[] = []
+        let mvList = this.game.getMoveList()
+        let fen = this.game.getFen()
+        for(let i = 0; i< mvList.length ; i ++){
+            let mv = mvList[i]
+            let score = this.alphaBetaScore(this.getFenAfterMv(fen,mv),depth,Number.MIN_SAFE_INTEGER,Number.MAX_SAFE_INTEGER,false)
+            if(score>=v){
+                v = score
+                bestMv = mv
+            }
+        }
+        console.timeEnd(`getBestMv:${depth}`)
+        return bestMv
     }
 
-    //alphaBetaScore(origin, depth, -∞, +∞, TRUE)
+    getMvListFromFen(fen):Array<Array<DMove>>{
+        let g = new FDGame(this.game.gameInfo)
+        g.startFromFen(fen)
+        g.setDrawRule(this.game.drawRule)
+        return g.getMoveList()
+    }
+
+    getFenAfterMv(fen:string,mv:DMove[]):string{
+        let g = new FDGame(this.game.gameInfo)
+        g.startFromFen(fen)
+        g.setDrawRule(this.game.drawRule)
+        g.makeMv(mv)
+        return g.getFen()
+    }
+
     alphaBetaScore(fen:string,depth:number,alpha:number,beta:number,isPlayer:boolean){
         if(depth==0)
          return this.score(fen,isPlayer)
@@ -1122,34 +1146,10 @@ export class FDGame {
          }
     }
 
-    getMvListFromFen(fen):Array<Array<DMove>>{
-        let g = new FDGame(this.gameInfo)
+    score(fen:string,isPlayer:boolean):number{
+        let g = new FDGame(this.game.gameInfo)
         g.startFromFen(fen)
-        g.setDrawRule(this.drawRule)
-        return g.getMoveList()
-    }
-
-    getFenAfterMv(fen:string,mv:DMove[]):string{
-        let g = new FDGame(this.gameInfo)
-        g.startFromFen(fen)
-        g.setDrawRule(this.drawRule)
-        g.makeMv(mv)
-        return g.getFen()
-    }
-  
-    getBestMv(){
-        let v = Number.MIN_SAFE_INTEGER
-        let bestMv:DMove[] = []
-        let mvList = this.getMoveList()
-        let fen = this.getFen()
-        for(let i = 0; i< mvList.length ; i ++){
-            let mv = mvList[i]
-            let score = this.alphaBetaScore(this.getFenAfterMv(fen,mv),4,Number.MIN_SAFE_INTEGER,Number.MAX_SAFE_INTEGER,false)
-            if(score>=v){
-                v = score
-                bestMv = mv
-            }
-        }
-        return bestMv
+        g.setDrawRule(this.game.drawRule)
+        return isPlayer ? g.playerScore() : -g.playerScore()
     }
 }

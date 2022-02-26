@@ -85,10 +85,10 @@ import { mv2xy } from "./src/chess/engine/FCUtils"
 // game.reset()
 // console.log(game.boardDes())
 
-import {FDGame,DMove,DrawRule} from './src/draughts/engine/FDGame'
+import { FDGame, DMove, DrawRule, DSearch } from './src/draughts/engine/FDGame';
 import {International_draughts,Brazilian_draughts} from './src/draughts/engine/FDConst'
 
-let dGame10x10 = new FDGame(International_draughts)
+// let dGame10x10 = new FDGame(International_draughts)
 // console.log(dGame10x10.boardDes())
 
 let dGame8x8 = new FDGame(Brazilian_draughts)
@@ -97,8 +97,8 @@ let dGame8x8 = new FDGame(Brazilian_draughts)
 console.log(dGame8x8.boardDes())
 let fen = dGame8x8.getFen()
 console.log(fen)
-dGame8x8.startFromFen(fen)
-console.log(dGame8x8.boardDes())
+// dGame8x8.startFromFen("W:WK5:BK13,24")
+// console.log(dGame8x8.boardDes())
 let rule64 = new DrawRule()
 //64:[3,15,{"0,1,0,1":5,"1,1,0,1":5,"0,1,1,1":5,"0,1,0,2":5,"0,2,0,1":5}]
 rule64.homeType = 3
@@ -106,7 +106,9 @@ rule64.kingMove = 30
 rule64.pieceNum = [{piece:"0,1,0,1",step:10},{piece:"1,1,0,1",step:10},{piece:"0,1,1,1",step:10},{piece:"0,1,0,2",step:10},{piece:"0,2,0,1",step:10}]
 dGame8x8.setDrawRule(rule64)
 
-let mv = dGame8x8.getBestMv()
+let search = new DSearch()
+let depth = 5
+let mv = search.getBestMv(depth,dGame8x8)
 
 while (mv.length>0) {
     let result = dGame8x8.makeMv(mv)
@@ -114,7 +116,7 @@ while (mv.length>0) {
     dGame8x8.checkEnd()
     console.log(mv)
     console.log(dGame8x8.boardDes())
-    mv = dGame8x8.getBestMv()
+    mv = search.getBestMv(depth,dGame8x8)
 }
 
 // let dMvs: Array<Array<DMove>> = dGame8x8.getMoveList()
