@@ -107,7 +107,8 @@ export class FDGame {
         }
     }
     private gameDraw:DrawRule
-    constructor(gameInfo:string){
+
+    constructor(private gameInfo:string){
         this.initGameInfo(gameInfo)
         this.startFromFen(this.startFen);
     }
@@ -279,15 +280,15 @@ export class FDGame {
 
     idx2San(idx:number){
         if(this.type==26){
-            let x = idx%8
-            let y = ~~(idx/8)
-            return String.fromCharCode('a'.charCodeAt(0)+x)+`${8-y}`
+            let x = idx%this.width
+            let y = ~~(idx/this.width)
+            return String.fromCharCode('a'.charCodeAt(0)+x)+`${this.height-y}`
         }
         return ""
     }
 
 
-    pdnsize(){
+    pdnSize(){
         if(this.type==20){
             return 50;
         }else if(this.type==26){
@@ -300,14 +301,14 @@ export class FDGame {
     getMoveList():Array<Array<DMove>>{
         let eatMvs:Array<Array<DMove>> = []
         let normalMvs:Array<Array<DMove>> = []
-        for(let i = 1; i <= this.pdnsize(); i++){
+        for(let i = 1; i <= this.pdnSize(); i++){
             let piece = this.getPieceOnPdnPos(i)
             if((piece & this.turn)==this.turn){
                 //normal piece
                 if((piece & PAWNS)==PAWNS){
-                    this.searchPieceEatMvs(i,i,[],[],eatMvs)
+                    this.searchPawnsEatMvs(i,i,[],[],eatMvs)
                     if(eatMvs.length==0){
-                        let mvs = this.getPieceNormalMv(i,this.turn)
+                        let mvs = this.getPawnsNormalMv(i,this.turn)
                         while(mvs.length>0){
                             normalMvs.push([mvs.pop()])
                         }
@@ -345,7 +346,7 @@ export class FDGame {
         return []
     }
 
-    getPieceNormalMv(from:number,turn: number):Array<DMove>{
+    getPawnsNormalMv(from:number,turn: number):Array<DMove>{
         let type = 2
         if(turn==C_WHITE) type = 1
         let diffPos = this.pdnPosDiff(from,type)
@@ -561,11 +562,48 @@ export class FDGame {
         return res
     }
 
-    score(){
+    score(fen:string,isPlayer:boolean):number{
+        let g = new FDGame(this.gameInfo)
+        g.startFromFen(fen)
+        g.setDrawRule(this.drawRule)
+        return isPlayer ? g.playerScore() : -g.playerScore()
+    }
+
+    playerScore(){
         /**
-         * 1.this.turn: pawns +1 ,king +2 
-         *   other: pawns -1 ,king -2 
+         * Pawn’s value: 5 + row number King’s value = 5 + # of rows + 2
          */
+        let score = 0
+        for(let i = 0 ; i < this.width*this.height ; i ++){
+            let p = this.board[i]
+            if((p & PAWNS) == PAWNS){
+                let y = ~~(i/this.width)
+                if(this.turn == C_BLACK){
+                    if((p&C_BLACK)==C_BLACK){
+                        score += 5 + y + 1
+                    }else{
+                        score -= 5 + this.height-y + 1
+                    }
+                }
+                if(this.turn == C_WHITE){
+                    if((p&C_BLACK)==C_BLACK){
+                        score -= 5 + y + 1
+                    }else{
+                        score += 5 + this.height-y + 1
+                    }
+                }
+            }
+            if((p & KING) == KING){
+                let x = i%this.width
+                let y = ~~(i/this.width)
+                let s = Math.min(x-0,y-0) + Math.min(this.width-1-x,y-0)
+                       +Math.min(x-0,this.height-1-y)
+                       +Math.min(this.width-1-x,this.height-1-y)+5+2
+                if((p & this.turn) == this.turn) score +=s
+                else score -=s
+            }
+        }
+        return score
     }
 
     pruning(){
@@ -728,23 +766,35 @@ export class FDGame {
         return null
     }
 
+    pdnPos2San(pdnPos:number){
+        return this.idx2San(this.pdnPos2Idx(pdnPos))
+    }
+
     mvStr(mv:Array<DMove>){
         let san = ""
         for(let i = 0; i < mv.length; i++){
             if((mv[i].flag & 2) == 0){
+                if(this.notation=='N')
                 san = `${mv[i].from}-${mv[i].to}`
+                else if(this.notation=='A'){
+                    san = `${this.pdnPos2San(mv[i].from)}-${this.pdnPos2San(mv[i].to)}`
+                }
             }else{
-                if(i==0)
-                san += `${mv[i].from}x${mv[i].to}`
-                else san += `x${mv[i].to}`
+                if(this.notation=='N'){
+                    if(i==0)
+                    san += `${mv[i].from}x${mv[i].to}`
+                    else san += `x${mv[i].to}`
+                } else if(this.notation=='A'){
+                    if(i==0)
+                    san += `${this.pdnPos2San(mv[i].from)}x${this.pdnPos2San(mv[i].to)}`
+                    else san += `x${this.pdnPos2San(mv[i].to)}`
+                }
+
             }
         }
         return san
     }
 
-    undoMv(){
-
-    }
 
     search(level: number,ms: number){
 
@@ -849,7 +899,7 @@ export class FDGame {
      * @param currentMv 当前吃子序列
      * @param mvs 吃子走子集合
      */
-    searchPieceEatMvs(start: number,current: number,history: Array<number>,currentMv: Array<DMove>,mvs: Array<Array<DMove>>){
+    searchPawnsEatMvs(start: number,current: number,history: Array<number>,currentMv: Array<DMove>,mvs: Array<Array<DMove>>){
         let diff = this.pdnPosDiff(current,0)
         let hasContinue = false
         for(let i = 0 ; i < 4 ; i++){
@@ -880,7 +930,8 @@ export class FDGame {
                         to:pN,
                         flag:2,
                         eatPos:dir[i],
-                        eatPiece:pi
+                        eatPiece:pi,
+                        kingMove:false
                     })
                     let range = this.pdnRange(current,pN)
                     for(let j = 0; j <range.length; j++){
@@ -891,7 +942,7 @@ export class FDGame {
                     history.push(current)
                     history.push(pN)
                     hasContinue = true;
-                    this.searchPieceEatMvs(start,pN,history,mvD,mvs)
+                    this.searchPawnsEatMvs(start,pN,history,mvD,mvs)
                 }
             }
         }
@@ -1043,5 +1094,62 @@ export class FDGame {
             }
         }
         return cnt
+    }
+
+    //alphaBetaScore(origin, depth, -∞, +∞, TRUE)
+    alphaBetaScore(fen:string,depth:number,alpha:number,beta:number,isPlayer:boolean){
+        if(depth==0)
+         return this.score(fen,isPlayer)
+         let mvList = this.getMvListFromFen(fen)
+         if(isPlayer){
+             let v = Number.MIN_SAFE_INTEGER
+             for(let mv of mvList){
+                v = Math.max(v,this.alphaBetaScore(this.getFenAfterMv(fen,mv),depth-1,alpha,beta,false))
+                alpha = Math.max(alpha,v)
+                if(beta<=alpha)
+                break
+             }
+             return v
+         }else{
+            let v = Number.MAX_SAFE_INTEGER
+            for(let mv of mvList){
+               v = Math.min(v,this.alphaBetaScore(this.getFenAfterMv(fen,mv),depth-1,alpha,beta,true))
+               beta = Math.min(beta,v)
+               if(beta<=alpha)
+               break
+            }
+            return v
+         }
+    }
+
+    getMvListFromFen(fen):Array<Array<DMove>>{
+        let g = new FDGame(this.gameInfo)
+        g.startFromFen(fen)
+        g.setDrawRule(this.drawRule)
+        return g.getMoveList()
+    }
+
+    getFenAfterMv(fen:string,mv:DMove[]):string{
+        let g = new FDGame(this.gameInfo)
+        g.startFromFen(fen)
+        g.setDrawRule(this.drawRule)
+        g.makeMv(mv)
+        return g.getFen()
+    }
+  
+    getBestMv(){
+        let v = Number.MIN_SAFE_INTEGER
+        let bestMv:DMove[] = []
+        let mvList = this.getMoveList()
+        let fen = this.getFen()
+        for(let i = 0; i< mvList.length ; i ++){
+            let mv = mvList[i]
+            let score = this.alphaBetaScore(this.getFenAfterMv(fen,mv),4,Number.MIN_SAFE_INTEGER,Number.MAX_SAFE_INTEGER,false)
+            if(score>=v){
+                v = score
+                bestMv = mv
+            }
+        }
+        return bestMv
     }
 }

@@ -106,14 +106,25 @@ rule64.kingMove = 30
 rule64.pieceNum = [{piece:"0,1,0,1",step:10},{piece:"1,1,0,1",step:10},{piece:"0,1,1,1",step:10},{piece:"0,1,0,2",step:10},{piece:"0,2,0,1",step:10}]
 dGame8x8.setDrawRule(rule64)
 
-let dMvs: Array<Array<DMove>> = dGame8x8.getMoveList()
-while(dMvs.length > 0){
-    let result = dGame8x8.makeMv(dMvs[0])
+let mv = dGame8x8.getBestMv()
+
+while (mv.length>0) {
+    let result = dGame8x8.makeMv(mv)
     if(result==false) break
     dGame8x8.checkEnd()
-    console.log(dMvs[0])
+    console.log(mv)
     console.log(dGame8x8.boardDes())
-    dMvs = dGame8x8.getMoveList()
+    mv = dGame8x8.getBestMv()
 }
+
+// let dMvs: Array<Array<DMove>> = dGame8x8.getMoveList()
+// while(dMvs.length > 0){
+//     let result = dGame8x8.makeMv(dMvs[0])
+//     if(result==false) break
+//     dGame8x8.checkEnd()
+//     console.log(dMvs[0])
+//     console.log(dGame8x8.boardDes())
+//     dMvs = dGame8x8.getMoveList()
+// }
 console.log(dGame8x8.generatePdnBook())
 
