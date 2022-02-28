@@ -562,6 +562,8 @@ export class FDGame {
         // let y = xDiff>>31
         //  xDiff = (xDiff^y)-y
         let res = []
+        xDiff = Math.abs(xDiff)
+        if(xDiff>0)
         for (let i = 1; i < Math.abs(xDiff); i++){
             let x = xAdd ? xFrom+i : xFrom - i
             let y = yAdd ? yFrom+i : yFrom - i
@@ -887,6 +889,10 @@ export class FDGame {
         return book
     }
 
+    getStep(){
+        return this.mvHistory.length
+    }
+
     resultStr(){
        if(this.result==0) return "*"
        if(this.result==DRAW) return "1-1"
@@ -1132,6 +1138,7 @@ export class FDGame {
     homeTypeCount(fen: string){
         let cnt = 0
         let len = this.fenHistory.length
+        if(len>0)
         for(let i = len - 1; i >= 0; i--){
             if(this.fenHistory[i] == fen){
                 cnt++;

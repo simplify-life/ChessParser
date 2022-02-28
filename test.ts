@@ -106,22 +106,21 @@ rule64.pieceNum = [{piece:"0,1,0,1",step:10},{piece:"1,1,0,1",step:10},{piece:"0
 dGame8x8.setDrawRule(rule64)
 
 dGame8x8.start()
-
+// dGame8x8.startFromFen("W:W5,13-14,18,29:B1,3,19-20,K31")
 console.time(`game`)
 
 let search = new DSearch()
 let depth = 5
 let mv = search.getBestMv(depth,dGame8x8)
-
 while (mv.length>0) {
     let result = dGame8x8.makeMv(mv)
     if(result==false) break
     dGame8x8.checkEnd()
     console.log(mv)
-    console.log(dGame8x8.shortFen())
     console.log(dGame8x8.boardDes())
     mv = search.getBestMv(depth,dGame8x8)
 }
 console.log(dGame8x8.generatePdnBook())
 
 console.timeEnd(`game`)
+//5.g1-h2 f6-e5  6.g3-h4 e5xg3  7.h2xf4 g7-f6  8.f2-e3 f6-g5  9.h4xf6 e7xg5
