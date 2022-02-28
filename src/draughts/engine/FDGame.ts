@@ -669,14 +669,16 @@ export class FDGame {
                     this.turn = this.turn==C_BLACK ? C_WHITE : C_BLACK
                     if(this.gameDraw!=void 0){
                         this.gameDraw.homeType = this.homeTypeCount(this.getFen())
+                        this.fenHistory.push(this.getFen())
                     }
-                    this.fenHistory.push(this.getFen())
                     return true
                 }
             }
             this.turn = this.turn==C_BLACK ? C_WHITE : C_BLACK
-            this.fenHistory.push(this.getFen())
-            this.pieceNumKeyCheck()
+            if(this.gameDraw!=void 0){
+                this.fenHistory.push(this.getFen())
+                this.pieceNumKeyCheck()
+            }
             return true;
         }
         return false;
