@@ -91,7 +91,7 @@ import { International_draughts, Brazilian_draughts, C_WHITE, C_BLACK } from './
 // let dGame10x10 = new FDGame(International_draughts)
 // console.log(dGame10x10.boardDes())
 let dGame8x8 = new FDGame(Brazilian_draughts)
-// console.log(dGame8x8.boardDes())
+// √
 // dGame8x8.startFromFen("W:W7,29-31:B12,20")
 // console.log(dGame8x8.boardDes())
 // let fen = dGame8x8.getFen()
@@ -106,7 +106,8 @@ rule64.pieceNum = [{piece:"0,1,0,1",step:10},{piece:"1,1,0,1",step:10},{piece:"0
 dGame8x8.setDrawRule(rule64)
 
 dGame8x8.start()
-// dGame8x8.startFromFen("W:W5,13-14,18,29:B1,3,19-20,K31")
+// dGame8x8.startFromFen("B:WK1:BK5,K18,K22")
+// console.log(dGame8x8.boardDes())
 console.time(`game`)
 
 let search = new DSearch()
@@ -118,6 +119,8 @@ while (mv.length>0) {
     dGame8x8.checkEnd()
     console.log(mv)
     console.log(dGame8x8.boardDes())
+    if(dGame8x8.turn == C_BLACK) depth=4
+    else depth = 3
     mv = search.getBestMv(depth,dGame8x8)
 }
 console.log(dGame8x8.generatePdnBook())

@@ -399,7 +399,7 @@ export class FDGame {
                         flag: 0,
                         kingMove:true
                     })
-                }else continue
+                }else break
             }
         }
         return mvs;
