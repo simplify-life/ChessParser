@@ -355,7 +355,7 @@ export class FDGame {
                 let eatCnt = eatMvs[0].length
                 let eatMvsFilter = []
                 for(let j = 0; j < eatMvs.length; j++){
-                    if(eatMvs[j].length < eatCnt) continue;
+                    if(eatMvs[j].length < eatCnt) break;
                     eatMvsFilter.push(eatMvs[j])
                 }
                return eatMvsFilter
@@ -369,26 +369,17 @@ export class FDGame {
         if(turn==C_WHITE) type = 1
         let diffPos = this.pdnPosDiff(from,type)
         let mvs = []
-        if(diffPos[0].length>0){
-            let normalL = diffPos[0][0]
-            if(this.getPieceOnPdnPos(normalL)==NONE){
-                mvs.push({
-                    from:from,
-                    to:normalL,
-                    flag: (this.is2Bottom(normalL,turn) ? 1 : 0),
-                    kingMove:false
-                })
-            }
-        }
-        if(diffPos[1].length>0){
-            let normalR = diffPos[1][0]
-            if(this.getPieceOnPdnPos(normalR)==NONE){
-                mvs.push({
-                    from:from,
-                    to:normalR,
-                    flag: (this.is2Bottom(normalR,turn) ? 1 : 0),
-                    kingMove:false
-                })
+        for(let i = 0; i < 2 ; i++){
+            if(diffPos[i].length>0){
+                let to = diffPos[i][0]
+                if(this.getPieceOnPdnPos(to)==NONE){
+                    mvs.push({
+                        from:from,
+                        to:to,
+                        flag: (this.is2Bottom(to,turn) ? 1 : 0),
+                        kingMove:false
+                    })
+                }
             }
         }
         return mvs;
@@ -400,11 +391,11 @@ export class FDGame {
         for(let i = 0; i < 4; i++){
             let diff = diffPos[i]
             for(let j = 0; j < diff.length; j++){
-                let pndPos = diff[j]
-                if(this.getPieceOnPdnPos(pndPos)==NONE){
+                let to = diff[j]
+                if(this.getPieceOnPdnPos(to)==NONE){
                     mvs.push({
                         from:from,
-                        to:pndPos,
+                        to:to,
                         flag: 0,
                         kingMove:true
                     })
@@ -688,12 +679,12 @@ export class FDGame {
         if(this.mvHistory.length>0){
             this.turn = this.turn==C_BLACK ? C_WHITE : C_BLACK
             this.fenHistory.pop()
-            let mvs = this.mvHistory.pop()
-            let undoMv = mvs[0]
+            let mvLast = this.mvHistory.pop()
+            let undoMv = mvLast[0]
             if((undoMv.flag & 2) == 2){
-                let len = mvs.length
+                let len = mvLast.length
                 for(let i = len - 1 ; i >= 0 ; i--){
-                    let mv = mvs[i]
+                    let mv = mvLast[i]
                     let from = this.pdnPos2Idx(mv.from)
                     let to = this.pdnPos2Idx(mv.to)
                     this.board[from] = this.board[to]
@@ -722,8 +713,8 @@ export class FDGame {
                            if(i==0){
                                //归零
                                this.gameDraw.kingMove = 0
-                               for (let i = 0; i < this.gameDraw.pieceNum.length ; i ++){
-                                this.gameDraw.pieceNum[i].step = 0
+                               for (let j = 0; j < this.gameDraw.pieceNum.length ; j ++){
+                                this.gameDraw.pieceNum[j].step = 0
                                }
                            }
                            break
@@ -920,8 +911,8 @@ export class FDGame {
             for(let k = 0 ; k < currentMv.length ; k++){
                 mvD.push(currentMv[k])
             }
-            for(let i = 0; i < dir.length; i++){
-                let p = dir[i]
+            for(let j = 0; j < dir.length; j++){
+                let p = dir[j]
                 if(history.indexOf(p)!=-1) break
                 let pi = this.getPieceOnPdnPos(p)
                 if(pi==NONE) break
@@ -930,10 +921,10 @@ export class FDGame {
                     break;
                 }
                 //敌方棋子
-                if(i!=0) break;
+                if(j!=0) break;
                 //考虑后面 dis 是否有多余1个空位
-                if(dir.length<=i+1) break;
-                let pN = dir[i+1]
+                if(dir.length<=j+1) break;
+                let pN = dir[j+1]
                 if(history.indexOf(pN)!=-1) break
                 let piN = this.getPieceOnPdnPos(pN)
                 if(piN==NONE){
@@ -941,14 +932,14 @@ export class FDGame {
                         from:current,
                         to:pN,
                         flag:2,
-                        eatPos:dir[i],
+                        eatPos:dir[j],
                         eatPiece:pi,
                         kingMove:false
                     })
                     let range = this.pdnRange(current,pN)
-                    for(let j = 0; j <range.length; j++){
-                        if(history.indexOf(range[j])==-1){
-                            history.push(range[j])
+                    for(let m = 0; m <range.length; m++){
+                        if(history.indexOf(range[m])==-1){
+                            history.push(range[m])
                         }
                     }
                     history.push(current)
@@ -983,8 +974,8 @@ export class FDGame {
         let hasContinue = false
         for(let i = 0 ; i < 4 ; i++){
             let dir = diff[i]
-            for(let i = 0; i < dir.length; i++){
-                let p = dir[i]
+            for(let j = 0; j < dir.length; j++){
+                let p = dir[j]
                 if(history.indexOf(p)!=-1) break
                 let pi = this.getPieceOnPdnPos(p)
                 if(pi==NONE){
@@ -994,15 +985,15 @@ export class FDGame {
                     break;
                 }
                 //考虑后面 dis 是否有空位
-                if(i+1 >= dir.length) break;
-                for(let j=i+1;j<dir.length;j++){
-                    let pN = dir[j]
+                if(j+1 >= dir.length) break;
+                for(let k=j+1;k<dir.length;k++){
+                    let pN = dir[k]
                     if(history.indexOf(pN)!=-1) break
                     let piN = this.getPieceOnPdnPos(pN)
                     if(piN==NONE){
                         let mvD:Array<DMove>= []
-                        for(let k = 0 ; k < currentMv.length ; k++){
-                            mvD.push(currentMv[k])
+                        for(let m = 0 ; m < currentMv.length ; m++){
+                            mvD.push(currentMv[m])
                         }
                         mvD.push({
                             from:current,
@@ -1013,9 +1004,9 @@ export class FDGame {
                             kingMove:true
                         })
                         let range = this.pdnRange(current,pN)
-                        for(let j = 0; j <range.length; j++){
-                            if(history.indexOf(range[j])==-1){
-                                history.push(range[j])
+                        for(let l = 0; l <range.length; l++){
+                            if(history.indexOf(range[l])==-1){
+                                history.push(range[l])
                             }
                         }
                         history.push(current)
@@ -1141,7 +1132,7 @@ export class FDGame {
     homeTypeCount(fen: string){
         let cnt = 0
         let len = this.fenHistory.length
-        for (let i = 0; i < len;i++){
+        for(let i = len - 1; i >= 0; i--){
             if(this.fenHistory[i] == fen){
                 cnt++;
             }
@@ -1153,18 +1144,14 @@ export class FDGame {
 
 export class DSearch {
 
-    private game:FDGame
-    constructor(){}
-    
     getBestMv(depth:number,game:FDGame){
-        this.game = game
         // console.time(`getBestMv:${depth}`)
         let v = Number.MIN_SAFE_INTEGER
         let bestMv:DMove[] = []
-        let mvList = this.game.getMoveList()
+        let mvList = game.getMoveList()
         for(let i = 0; i< mvList.length ; i ++){
             let mv = mvList[i]
-            let g = this.game.clone()
+            let g = game.clone()
             g.makeMv(mv)
             let score = this.alphaBetaScore(g,depth,Number.MIN_SAFE_INTEGER,Number.MAX_SAFE_INTEGER,false)
             if(score>=v){
