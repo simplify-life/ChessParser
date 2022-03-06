@@ -119,8 +119,8 @@ while (mv.length>0) {
     dGame8x8.checkEnd()
     console.log(mv)
     console.log(dGame8x8.boardDes())
-    if(dGame8x8.turn == C_BLACK) depth=4
-    else depth = 3
+    if(dGame8x8.turn == C_BLACK) depth=7
+    else depth = 5
     mv = search.getBestMv(depth,dGame8x8)
 }
 console.log(dGame8x8.generatePdnBook())

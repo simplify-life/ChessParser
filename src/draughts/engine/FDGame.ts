@@ -882,7 +882,7 @@ export class FDGame {
             book +=`[Result "${this.resultStr()}"]\n`
             book += "\n"
         for(let i = 0; i <this.mvHistory.length ; i ++){
-            if(i%2 == 0) book +=`  ${i/2 + 1}.${this.mvStr(this.mvHistory[i])}`
+            if(i%2 == 0) book +=`  ${i/2 + 1}. ${this.mvStr(this.mvHistory[i])}`
             else book +=` ${this.mvStr(this.mvHistory[i])}`
         }
         book +=` ${this.resultStr()}`
@@ -1156,15 +1156,20 @@ export class DSearch {
         let v = Number.MIN_SAFE_INTEGER
         let bestMv:DMove[] = []
         let mvList = game.getMoveList()
+        let alpha = Number.MIN_SAFE_INTEGER
+        let beta = Number.MAX_SAFE_INTEGER
         for(let i = 0; i< mvList.length ; i ++){
             let mv = mvList[i]
             let g = game.clone()
             g.makeMv(mv)
-            let score = this.alphaBetaScore(g,depth,Number.MIN_SAFE_INTEGER,Number.MAX_SAFE_INTEGER,false)
+            let score = this.alphaBetaScore(g,depth,alpha,beta,false)
             if(score>=v){
                 v = score
                 bestMv = mv
             }
+            alpha = Math.max(alpha,v)
+            if(beta<=alpha)
+            break
         }
         // console.timeEnd(`getBestMv:${depth}`)
         return bestMv
