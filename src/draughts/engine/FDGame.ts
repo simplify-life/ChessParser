@@ -1177,7 +1177,7 @@ export class DSearch {
 
     alphaBetaScore(node:FDGame,depth:number,alpha:number,beta:number,isPlayer:boolean){
         if(depth==0)
-         return isPlayer ? node.playerScore() : -node.playerScore()
+         return node.playerScore()
          let mvList = node.getMoveList()
          if(isPlayer){
              let v = Number.MIN_SAFE_INTEGER
