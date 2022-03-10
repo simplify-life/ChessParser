@@ -89,38 +89,36 @@ export class FGoBoard {
         this.turn = this.otherColor();
     }
 
+    private searchInfo(board:Array<number>,info:Array<number>,searchPos:number,color:number):Array<number>{
+        if(info.indexOf(searchPos) == -1){
+            let cNeighbors:CaptureNeighbors = {liberty:0,neighbors:[]};
+            this.searchNeighbors(cNeighbors,board, searchPos,color,null);
+            if(cNeighbors.liberty == 0){
+                info = info.concat(...cNeighbors.neighbors);
+            }
+        }
+        return info;
+    }
+
     public tryMove( mv:GoMove):MoveResult{
         let newBoard = this.board.slice(0);
         let pos = mv.pos;
         newBoard[pos] = mv.color;
         let cNeighbors:CaptureNeighbors = {liberty:0,neighbors:[]};
         this.searchNeighbors(cNeighbors,newBoard, pos,mv.color,null);
+        let info = new Array();
+        let x = pos%this.width;
+        let y = ~~(pos/this.width);
+        if(x>0)
+            info = this.searchInfo(newBoard,info,pos-1,this.otherColor());
+        if(x<this.width-1)
+            info = this.searchInfo(newBoard,info,pos+1,this.otherColor());
+        if(y>0)
+            info = this.searchInfo(newBoard,info,pos-this.width,this.otherColor());
+        if(y<this.height-1)
+            info = this.searchInfo(newBoard,info,pos+this.width,this.otherColor());
+
         if(cNeighbors.liberty==0){
-            let cNeighborsLeft = {liberty:0,neighbors:[]};
-            this.searchNeighbors(cNeighborsLeft,newBoard, pos-1,this.otherColor(),null);
-            let cNeighborsRight = {liberty:0,neighbors:[]};
-            this.searchNeighbors(cNeighborsRight,newBoard, pos+1,this.otherColor(),null);
-            let cNeighborsTop = {liberty:0,neighbors:[]};
-            this.searchNeighbors(cNeighborsTop,newBoard, pos-this.width,this.otherColor(),null);
-            let cNeighborsBtm = {liberty:0,neighbors:[]};
-            this.searchNeighbors(cNeighborsBtm,newBoard, pos+this.width,this.otherColor(),null);
-            let info = [];
-
-            if(cNeighborsLeft.liberty == 0){
-                info = cNeighborsLeft.neighbors;
-            }
-
-            if(cNeighborsRight.liberty == 0){
-                info = info.concat(cNeighborsRight.neighbors);
-            }
-
-            if(cNeighborsTop.liberty == 0){
-                info = info.concat(cNeighborsTop.neighbors);
-            }
-            if(cNeighborsBtm.liberty == 0){
-                info = info.concat(cNeighborsBtm.neighbors);
-            }
-
             if(info.length==0) return null;
 
             info = [... new Set(info)];
@@ -140,31 +138,6 @@ export class FGoBoard {
             return result;
         }else{
             let result:MoveResult = {result:true,info:[]};
-            let cNeighborsLeft = {liberty:0,neighbors:[]};
-            this.searchNeighbors(cNeighborsLeft,newBoard, pos-1,this.otherColor(),null);
-            let cNeighborsRight = {liberty:0,neighbors:[]};
-            this.searchNeighbors(cNeighborsRight,newBoard, pos+1,this.otherColor(),null);
-            let cNeighborsTop = {liberty:0,neighbors:[]};
-            this.searchNeighbors(cNeighborsTop,newBoard, pos-this.width,this.otherColor(),null);
-            let cNeighborsBtm = {liberty:0,neighbors:[]};
-            this.searchNeighbors(cNeighborsBtm,newBoard, pos+this.width,this.otherColor(),null);
-
-            let info = [];
-
-            if(cNeighborsLeft.liberty == 0){
-                info = cNeighborsLeft.neighbors;
-            }
-
-            if(cNeighborsRight.liberty == 0){
-                info = info.concat(cNeighborsRight.neighbors);
-            }
-
-            if(cNeighborsTop.liberty == 0){
-                info = info.concat(cNeighborsTop.neighbors);
-            }
-            if(cNeighborsBtm.liberty == 0){
-                info = info.concat(cNeighborsBtm.neighbors);
-            }
             info = [... new Set(info)];
             result.info = info;
             return result;
