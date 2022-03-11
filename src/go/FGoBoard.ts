@@ -117,11 +117,8 @@ export class FGoBoard {
             info = this.searchInfo(newBoard,info,pos-this.width,this.otherColor());
         if(y<this.height-1)
             info = this.searchInfo(newBoard,info,pos+this.width,this.otherColor());
-
         if(cNeighbors.liberty==0){
             if(info.length==0) return null;
-
-            info = [... new Set(info)];
             if(info.length == 1){
                 let lastMvPos = info[0];
                 let lastCapturePos = pos;
@@ -137,9 +134,7 @@ export class FGoBoard {
             let result:MoveResult = {result:true,info:info};
             return result;
         }else{
-            let result:MoveResult = {result:true,info:[]};
-            info = [... new Set(info)];
-            result.info = info;
+            let result:MoveResult = {result:true,info:info};
             return result;
         }
     }
