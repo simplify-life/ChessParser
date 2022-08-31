@@ -211,6 +211,16 @@ export class FGoBoard {
         this.changeTurn();
     }
 
+    public lastPassCnt():number{
+        let cnt = 0;
+        let size = this.moveHistory.length;
+        for(let i = size-1 ; i>0;i--){
+            let goMove = this.moveHistory[i];
+            if(goMove==null) cnt ++;
+            else break;
+        }
+        return cnt;
+    }
 
     public  getMvList():Array<GoMove>{
         let mvList:Array<GoMove> = [];
@@ -224,5 +234,76 @@ export class FGoBoard {
             }
         }
         return mvList;
+    }
+
+    public isEye(pos:number, color:number,maxArea:number){
+        let eye = [];
+        this.searchEye(eye,pos,color,null,maxArea);
+        return eye.length>0;
+    }
+
+    private searchEye(eye:Array<number>,searchPos:number,color:number,searchList:Array<number>, maxEyeArea:number){
+        if(searchList == null) searchList = [];
+        if(searchPos<0 || searchPos > this.board.length -1) return;
+        if(searchList.indexOf(searchPos)!=-1) return;
+        searchList.push(searchPos);
+        let piece = this.board[searchPos];
+        if(piece == EMPTY){
+            eye.push(searchPos);
+            if(eye.length>maxEyeArea) {
+                eye=[];
+                return;
+            }
+            let x = searchPos%this.width;
+            let y = ~~(searchPos/this.width);
+            if(x>0)
+                this.searchEye(eye,searchPos-1,color,searchList,maxEyeArea);
+            if(x<this.width-1 && eye.length>0)
+                this.searchEye(eye,searchPos+1,color,searchList,maxEyeArea);
+            if(y>0&& eye.length>0)
+                this.searchEye(eye,searchPos-this.width,color,searchList,maxEyeArea);
+            if(y<this.height-1 && eye.length>0)
+                this.searchEye(eye,searchPos+this.width,color,searchList,maxEyeArea);
+        }else if(piece!=color){
+            //失败
+            eye=[];
+        }
+    }
+
+    public getLastSgfMv():string {
+        let s = this.moveHistory.length;
+        if(s>0){
+            let mv = this.moveHistory[s-1];
+            if(mv==null){
+                return (this.otherColor()==BLACK?"B":"W") +"[]";
+            }
+            let pos = mv.pos;
+            let x = pos%this.width;
+            let y = ~~(pos/this.width);
+            return (this.otherColor()==BLACK?"B":"W") +"["+String.fromCharCode(x+97)+String.fromCharCode(y+97) +"]";
+        }
+        return null;
+    }
+
+    public  getLastGTPMv():string{
+        let s = this.moveHistory.length;
+        if(s>0){
+            let mv = this.moveHistory[s-1];
+            if(mv==null){
+                return "play " + (this.otherColor()==BLACK?"black ":"white ") +"pass";
+            }
+            let pos = mv.pos;
+            let x = pos%this.width;
+            let y = ~~(pos/this.width);
+            let cx = x+97;
+            if(cx>104) cx += 1;
+            let cy = this.height-y;
+            return (this.otherColor()==BLACK?"play black ":"play white ") +String.fromCharCode(cx)+cy;
+        }
+        return null;
+    }
+
+    public totalStep():number{
+        return this.moveHistory.length;
     }
 }

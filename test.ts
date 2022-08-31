@@ -165,3 +165,5 @@ for(let i = 0; i < mvList.length; i++){
     if(re)
     console.log(goBoard.showBoard())
 }
+console.log(goBoard.getLastGTPMv())
+console.log(goBoard.getLastSgfMv())
