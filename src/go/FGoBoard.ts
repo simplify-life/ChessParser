@@ -28,7 +28,8 @@ export class FGoBoard {
     private capture:[number, number];
     private turn:number;
     private moveHistory:Array<GoMove> ;
-
+    private AB:string
+    private AW:string
     constructor(board:Array<number>,width:number){
         this.width = width;
         this.board = board;
@@ -36,9 +37,23 @@ export class FGoBoard {
         this.capture = [0,0];
         this.moveHistory = [];
         this.turn = BLACK;
+        this.setABAW();
     }
 
-
+    public setABAW(){
+        let ab = "";
+        let aw = "";
+        for(let i = 0 ; i< this.board.length ; i++){
+            if(this.board[i] == BLACK){
+                ab += this.pos2Sgf(i)
+            };
+            if(this.board[i] == WHITE){
+                aw += this.pos2Sgf(i)
+            };
+        }
+        this.AB = ab;
+        this.AW = aw;
+    }
 
     public clearBoard():void{
         for(let i = 0 ; i< this.board.length ; i++){
@@ -278,11 +293,28 @@ export class FGoBoard {
                 return (this.otherColor()==BLACK?"B":"W") +"[]";
             }
             let pos = mv.pos;
-            let x = pos%this.width;
-            let y = ~~(pos/this.width);
-            return (this.otherColor()==BLACK?"B":"W") +"["+String.fromCharCode(x+97)+String.fromCharCode(y+97) +"]";
+            return (this.otherColor()==BLACK?"B":"W")+this.pos2Sgf(pos)
         }
         return null;
+    }
+
+    public getSgfMv(idx:number):string{
+        let s = this.moveHistory.length;
+        if(s>0 && idx<s && idx>=0){
+            let mv = this.moveHistory[idx];
+            if(mv==null){
+                return ((idx%2==0)?"B":"W") +"[]";
+            }
+            let pos = mv.pos;
+            return ((idx%2==0)?"B":"W")+this.pos2Sgf(pos)
+        }
+        return null;
+    }
+
+    private pos2Sgf(pos:number):string{
+        let x = pos%this.width;
+        let y = ~~(pos/this.width);
+        return  "["+String.fromCharCode(x+97)+String.fromCharCode(y+97) +"]";
     }
 
     public  getLastGTPMv():string{
@@ -305,5 +337,25 @@ export class FGoBoard {
 
     public totalStep():number{
         return this.moveHistory.length;
+    }
+
+    public sgf():string{
+        //let s = "(;FF[4]KM[7.5]RU[Chinese]GM[1]RE[W+65.75]SZ[19]GN[5分 30秒]PW[棋友800b]AP[弈战2.0]DT[2020-04-22]BR[18K]EV[5分 30秒]PB[棋友e875]HA[0]TM[0]WR[18K]CA[utf-8];B[kc];W[dp];B[co];W[cp];B[bo];W[do];B[cm];W[dm];B[dl];W[em];B[el];W[fl];B[fk];W[gk];B[fj];W[gl];B[hj];W[gj];B[fi];W[gi];B[fh];W[hg];B[gg];W[hf];B[gh];W[hh];B[jg];W[gf];B[ff];W[fe];B[ef];W[ee];B[df];W[de];B[ce];W[cd];B[be];W[id];B[ic];W[hc];B[ib];W[hd];B[fc];W[hb];B[ha];W[ga];B[ia];W[fb];B[eb];W[dc];B[cb];W[bd];B[db];W[ae];B[bf];W[ab];B[af];W[ad];B[bc];W[ac];B[cc];W[kd];B[ld];W[jc];B[ke];W[jd];B[le];W[lc];B[mc];W[kb];B[lb];W[pp];B[kc];W[qd];B[qe];W[pd];B[rd];W[rc];B[rb];W[re];B[rf];W[sd];B[qb];W[pb];B[ob];W[pa];B[oa];W[oc];B[nb];W[qm];B[qf];W[qj];B[sf];W[of];B[se];W[rd];B[sb];W[oh];B[ng];W[og];B[nf];W[ne];B[nd];W[oe];B[od];W[pe];B[nc];W[pc];B[lc];W[qh];B[nh];W[ni];B[mi];W[mj];B[lj];W[nj];B[lk];W[mh];B[li];W[mf];B[me];W[lm];B[ka];W[jb];B[je];W[ml];B[mk];W[nk];B[nl];W[nm];B[ol];W[om];B[pl];W[pm];B[ql];W[rl];B[rk];W[rm];B[rp];W[qq];B[rq];W[rr];B[qp];W[pq];B[qr];W[pr];B[rs];W[qs];B[sr];W[ss];B[sq];W[qo];B[ro];W[rn];B[so];W[rs];B[nq];W[sn];B[oq];W[lq];B[lr];W[kr];B[kq];W[mr];B[jr];W[ls];B[js];W[gq];B[hr];W[gr];B[hq];W[kp];B[jq];W[lo];B[iq];W[gp];B[ho];W[jo];B[jp];W[io];B[ip];W[hp];B[go];W[fo];B[dn];W[en];B[cn];W[bp];B[ap];W[aq];B[ao];W[br];B[bn];W[hs];B[is];W[gs];B[fp];W[ks];B[ll];W[mm];B[km];W[kn];B[jn];W[in];B[jm];W[im];B[il];W[ik];B[jk];W[hl];B[jl];W[ij];B[jj];W[ii];B[ji];W[ir];B[ih];W[ja];B[la];W[sp];B[ro])"
+        let book = "(;GM[1]FF[4]RU[Chinese]SZ["+this.width+"]";
+        if(this.AB!=""){
+            book +="AB"+this.AB;
+        }
+        if(this.AW!=""){
+            book +="AW"+this.AW;
+        }
+        book +=";"
+        let s = this.moveHistory.length;
+        for(let i = 0; i<s; i ++){
+            if(i==s-1)
+            book += this.getSgfMv(i)+")";
+            else
+            book += this.getSgfMv(i)+";";
+        }
+        return book;
     }
 }
