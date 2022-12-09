@@ -997,13 +997,14 @@ export class FDGame {
                     eatPiece:tarPice,
                     kingMove:false
                 }
-                mvs.push(mv)
+                let cmvs = mvs.slice(0)
+                cmvs.push(mv)
                 b[fromIdx] = NONE;
                 b[tarIdx] = NONE;
                 b[toIdx] = fromPice;
-                this.pawnEatMvs.push(mvs)
+                this.pawnEatMvs.push(cmvs)
                 for(let dn = 0 ; dn < 4 ; dn++){
-                    this.searchPawnEatDirect(toPdn,dn,b.slice(0),mvs.slice(0))
+                    this.searchPawnEatDirect(toPdn,dn,b.slice(0),cmvs.slice(0))
                 }
             }
         }
@@ -1052,13 +1053,14 @@ export class FDGame {
                             eatPiece:tarPice,
                             kingMove:true
                         }
-                        mvs.push(mv)
+                        let cmvs = mvs.slice(0)
+                        cmvs.push(mv)
                         b[fromIdx] = NONE;
                         b[tarIdx] = NONE;
                         b[toIdx] = fromPice;
-                        this.kingEatMvs.push(mvs)
+                        this.kingEatMvs.push(cmvs)
                         for(let dn = 0 ; dn < 4 ; dn++){
-                            this.searchKingEatDirect(toPdn,dn,b.slice(0),mvs.slice(0))
+                            this.searchKingEatDirect(toPdn,dn,b.slice(0),cmvs.slice(0))
                         }
                     }
                 }
