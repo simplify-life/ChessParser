@@ -317,15 +317,16 @@ export class FDGame {
     }
 
     getMoveList():Array<Array<DMove>>{
-        let eatMvs:Array<Array<DMove>> = []
         let normalMvs:Array<Array<DMove>> = []
+        this.pawnEatMvs = []
+        this.kingEatMvs = []
         for(let i = 1; i <= this.pdnSize(); i++){
             let piece = this.getPieceOnPdnPos(i)
             if((piece & this.turn)==this.turn){
                 //normal piece
                 if((piece & PAWNS)==PAWNS){
-                    this.searchPawnsEatMvs(i,i,[],[],eatMvs)
-                    if(eatMvs.length==0){
+                    this.searchPawnsEatMvs(i)
+                    if(this.pawnEatMvs.length==0){
                         let mvs = this.getPawnsNormalMv(i,this.turn)
                         while(mvs.length>0){
                             normalMvs.push([mvs.pop()])
@@ -334,8 +335,8 @@ export class FDGame {
                 }
                 //king piece
                 else if((piece & KING)==KING){
-                    this.searchKingEatMvs(i,i,[],[],eatMvs)
-                    if(eatMvs.length==0){
+                    this.searchKingEatMvs(i)
+                    if(this.kingEatMvs.length==0){
                         let mvs = this.getKingNormalMv(i)
                         while(mvs.length>0){
                             normalMvs.push([mvs.pop()])
@@ -344,12 +345,12 @@ export class FDGame {
                 }
             }
         }
-
-        if(eatMvs.length==0){
+        if(this.pawnEatMvs.length==0 && this.kingEatMvs.length == 0){
             if(normalMvs.length>0){
                 return normalMvs;
             }
         }else{
+            let eatMvs = this.pawnEatMvs.concat(this.kingEatMvs);
             if(eatMvs.length>0){
                 eatMvs.sort((a,b)=>b.length-a.length)
                 let eatCnt = eatMvs[0].length
@@ -433,6 +434,14 @@ export class FDGame {
             }
         }
         return false
+    }
+
+    pdn2XY(pdn:number):{x:number,y:number}{
+        let idx = this.pdnPos2Idx(pdn);
+        return {
+            x:idx%this.width,
+            y:~~(idx/this.width)
+        }
     }
 
     idxDiff(idx: number,x: number,y: number): number {
@@ -900,134 +909,147 @@ export class FDGame {
        if(this.result==C_BLACK) return "0-2"
     }
 
-    /**
-     * 普通吃子搜索
-     * @param start 起点
-     * @param current 当前点
-     * @param history 历史点
-     * @param currentMv 当前吃子序列
-     * @param mvs 吃子走子集合
-     */
-    searchPawnsEatMvs(start: number,current: number,history: Array<number>,currentMv: Array<DMove>,mvs: Array<Array<DMove>>){
-        let diff = this.pdnPosDiff(current,0)
-        let hasContinue = false
-        for(let i = 0 ; i < 4 ; i++){
-            let dir = diff[i]
-            let mvD:Array<DMove>= []
-            for(let k = 0 ; k < currentMv.length ; k++){
-                mvD.push(currentMv[k])
-            }
-            for(let j = 0; j < dir.length; j++){
-                let p = dir[j]
-                if(history.indexOf(p)!=-1) break
-                let pi = this.getPieceOnPdnPos(p)
-                if(pi==NONE) break
-
-                if((pi&this.turn)==this.turn){
-                    break;
-                }
-                //敌方棋子
-                if(j!=0) break;
-                //考虑后面 dis 是否有多余1个空位
-                if(dir.length<=j+1) break;
-                let pN = dir[j+1]
-                if(history.indexOf(pN)!=-1) break
-                let piN = this.getPieceOnPdnPos(pN)
-                if(piN==NONE){
-                    mvD.push({
-                        from:current,
-                        to:pN,
-                        flag:2,
-                        eatPos:dir[j],
-                        eatPiece:pi,
-                        kingMove:false
-                    })
-                    let range = this.pdnRange(current,pN)
-                    for(let m = 0; m <range.length; m++){
-                        if(history.indexOf(range[m])==-1){
-                            history.push(range[m])
-                        }
-                    }
-                    history.push(current)
-                    history.push(pN)
-                    hasContinue = true;
-                    this.searchPawnsEatMvs(start,pN,history,mvD,mvs)
-                }
-            }
+    searchPawnsEatMvs(start:number){
+        this.pawnEatMvs = []
+        for(let d = 0 ; d < 4 ; d++){
+            this.searchPawnEatDirect(start,d,this.cloneBoard(),null)
         }
-        if(hasContinue==false){
-            if(currentMv.length>0){
-                if(this.is2Bottom(currentMv[currentMv.length-1].to,this.turn)){
-                    currentMv[currentMv.length-1].flag |= 1
+    }
+
+    searchKingEatMvs(start:number){
+        this.pawnEatMvs = []
+        for(let d = 0 ; d < 4 ; d++){
+            this.searchPawnEatDirect(start,d,this.cloneBoard(),null)
+        }
+    }
+
+    pawnEatMvs:Array<Array<DMove>> = [];
+    kingEatMvs:Array<Array<DMove>> = [];
+
+    /**
+     * @param from 当前搜索点
+     * @param d 方向 0 左上 1 右上 2 左下 3右下
+     * @param b 棋盘
+     * @param mvs 存储的搜索路径
+     * @param sIdx
+     */
+    searchPawnEatDirect(from:number,d:number,b:Array<number>,mvs:Array<DMove>){
+        if(mvs==null){
+            mvs=[];
+        }
+        let fromPos = this.pdn2XY(from);
+        let tarPos = {x:fromPos.x-1,y:fromPos.y-1}
+        let toPos = {x:fromPos.x-2,y:fromPos.y-2}
+        switch(d){
+            case 1:
+                tarPos = {x:fromPos.x+1,y:fromPos.y-1}
+                toPos = {x:fromPos.x+2,y:fromPos.y-2}
+                break
+            case 2:
+                tarPos = {x:fromPos.x-1,y:fromPos.y+1}
+                toPos = {x:fromPos.x-2,y:fromPos.y+2}
+                break
+            case 3:
+                tarPos = {x:fromPos.x+1,y:fromPos.y+1}
+                toPos = {x:fromPos.x-2,y:fromPos.y+2}
+                break
+        }
+        let check = this.xyCheck(toPos.x,toPos.y)
+        if(check){
+            let fromIdx= this.pdnPos2Idx(from)
+            let tarIdx = this.xy2Idx(tarPos.x,tarPos.y)
+            let toIdx = this.xy2Idx(toPos.x,toPos.y)
+            let fromPice = this.board[fromIdx]
+            let tarPice = b[tarIdx]
+            let toPice = b[toIdx]
+            if(toPice==NONE && (tarPice!=NONE && (tarPice &this.turn)!=this.turn)){
+                let toPdn = this.idx2Pdn(toIdx)
+                //可以走
+                let mv = {
+                    from:from,
+                    to:toPdn,
+                    flag:2, //0 normal , 1 peice grade king, 2 x
+                    eatPos:this.idx2Pdn(tarIdx),
+                    eatPiece:tarPice,
+                    kingMove:false
                 }
-                mvs.push(currentMv)
+                mvs.push(mv)
+                b[fromIdx] = NONE;
+                b[tarIdx] = NONE;
+                b[toIdx] = fromPice;
+                this.pawnEatMvs.push(mvs)
+                for(let dn = 0 ; dn < 4 ; dn++){
+                    this.searchPawnEatDirect(toPdn,dn,b.slice(0),mvs.slice(0))
+                }
             }
         }
     }
 
-    /**
-     * 后吃子搜索
-     * @param start 起点
-     * @param current 当前点
-     * @param history 历史点
-     * @param currentMv 当前吃子序列
-     * @param mvs 吃子走子集合
-     */
-     searchKingEatMvs(start: number,current: number,history: Array<number>,currentMv: Array<DMove>,mvs: Array<Array<DMove>>){
-        //迭代搜索
-        // let startIdx = this.pdnPos2Idx(current)
-        let diff = this.pdnPosDiff(current,0)
-        let hasContinue = false
-        for(let i = 0 ; i < 4 ; i++){
-            let dir = diff[i]
-            for(let j = 0; j < dir.length; j++){
-                let p = dir[j]
-                if(history.indexOf(p)!=-1) break
-                let pi = this.getPieceOnPdnPos(p)
-                if(pi==NONE){
-                    continue;
-                }
-                if((pi&this.turn)==this.turn){
-                    break;
-                }
-                //考虑后面 dis 是否有空位
-                if(j+1 >= dir.length) break;
-                for(let k=j+1;k<dir.length;k++){
-                    let pN = dir[k]
-                    if(history.indexOf(pN)!=-1) break
-                    let piN = this.getPieceOnPdnPos(pN)
-                    if(piN==NONE){
-                        let mvD:Array<DMove>= []
-                        for(let m = 0 ; m < currentMv.length ; m++){
-                            mvD.push(currentMv[m])
-                        }
-                        mvD.push({
-                            from:current,
-                            to:pN,
-                            flag:2,
-                            eatPos:p,
-                            eatPiece:pi,
+
+
+    searchKingEatDirect(from:number,d:number,b:Array<number>,mvs:Array<DMove>){
+        if(mvs==null){
+            mvs=[];
+        }
+        let fromPos = this.pdn2XY(from);
+        
+        let dOff = [
+            [-1,-1],[1,-1],[-1,1],[1,1]
+        ]
+        let dPos = dOff[d]
+        for(let off = 1 ; off < this.width-1 ; off ++ ){
+            let tarPos = {x:fromPos.x+dPos[0]*off,y:fromPos.y+dPos[1]*off}
+            let toMin = {x:fromPos.x+dPos[0]*(off+1),y:fromPos.y+dPos[1]*(off+1)}
+            if(!this.xyCheck(tarPos.x,tarPos.y)) return
+            if(!this.xyCheck(toMin.x,toMin.y)) return
+            let fromIdx= this.pdnPos2Idx(from)
+            let tarIdx = this.xy2Idx(tarPos.x,tarPos.y)
+            let fromPice = this.board[fromIdx]
+            let tarPice = b[tarIdx]
+            if(tarPice!=NONE ){
+                if((tarPice &this.turn)!=this.turn){
+                    for(let toOff = 1; toOff < this.width - 1; toOff++){
+                        let l = off + toOff
+                        let toPos = {x:fromPos.x+dPos[0]*l,y:fromPos.y+dPos[1]*l}
+                        //后面没空格，直接返回
+                        if(!this.xyCheck(toPos.x,toPos.y)) return
+                        let toIdx = this.xy2Idx(toPos.x,toPos.y)
+                        let toPice = b[tarIdx]
+                        //空格有子直接返回
+                        if(toPice!=NONE) return
+
+                        let toPdn = this.idx2Pdn(toIdx)
+                        //可以走
+                        let mv = {
+                            from:from,
+                            to:toPdn,
+                            flag:2, //0 normal , 1 peice grade king, 2 x
+                            eatPos:this.idx2Pdn(tarIdx),
+                            eatPiece:tarPice,
                             kingMove:true
-                        })
-                        let range = this.pdnRange(current,pN)
-                        for(let l = 0; l <range.length; l++){
-                            if(history.indexOf(range[l])==-1){
-                                history.push(range[l])
-                            }
                         }
-                        history.push(current)
-                        history.push(pN)
-                        hasContinue = true;
-                        this.searchKingEatMvs(start,pN,history,mvD,mvs)
-                    }else break
+                        mvs.push(mv)
+                        b[fromIdx] = NONE;
+                        b[tarIdx] = NONE;
+                        b[toIdx] = fromPice;
+                        this.kingEatMvs.push(mvs)
+                        for(let dn = 0 ; dn < 4 ; dn++){
+                            this.searchKingEatDirect(toPdn,dn,b.slice(0),mvs.slice(0))
+                        }
+                    }
                 }
+                //找到一个没有空格的就返回
+                return
             }
         }
-        if(hasContinue==false){
-            if(currentMv.length>0){
-                mvs.push(currentMv)
-            }
-        }
+    }
+
+    xyCheck(x:number,y:number){
+        return x>=0 && x<this.width && y>=0 && y<this.height
+    }
+
+    xy2Idx(x:number,y:number){
+        return x + y * this.width
     }
 
     /**
