@@ -917,9 +917,9 @@ export class FDGame {
     }
 
     searchKingEatMvs(start:number){
-        this.pawnEatMvs = []
+        this.kingEatMvs = []
         for(let d = 0 ; d < 4 ; d++){
-            this.searchPawnEatDirect(start,d,this.cloneBoard(),null)
+            this.searchKingEatDirect(start,d,this.cloneBoard(),null)
         }
     }
 
@@ -931,7 +931,6 @@ export class FDGame {
      * @param d 方向 0 左上 1 右上 2 左下 3右下
      * @param b 棋盘
      * @param mvs 存储的搜索路径
-     * @param sIdx
      */
     searchPawnEatDirect(from:number,d:number,b:Array<number>,mvs:Array<DMove>){
         if(mvs==null){
