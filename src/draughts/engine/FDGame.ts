@@ -347,6 +347,17 @@ export class FDGame {
         }
         if(this.pawnEatMvs.length==0 && this.kingEatMvs.length == 0){
             if(normalMvs.length>0){
+                for(let i = 0 ; i < normalMvs.length;i++){
+                    let moves = normalMvs[i];
+                    let size = moves.length;
+                    let dMove = moves[size - 1];
+                    if(!dMove.kingMove){
+                        if(this.isTop(dMove.to)){
+                            dMove.flag = (dMove.flag | 1);
+                        }
+                    }
+
+                }
                 return normalMvs;
             }
         }else{
@@ -357,12 +368,28 @@ export class FDGame {
                 let eatMvsFilter = []
                 for(let j = 0; j < eatMvs.length; j++){
                     if(eatMvs[j].length < eatCnt) break;
+                    let size = eatMvs[j].length
+                    let dMove = eatMvs[j][size - 1];
+                    if(!dMove.kingMove){
+                        if(this.isTop(dMove.to)){
+                            dMove.flag = (dMove.flag | 1);
+                        }
+                    }
                     eatMvsFilter.push(eatMvs[j])
                 }
                return eatMvsFilter
             }
         }
         return []
+    }
+
+    isTop(pdnPos:number){
+        let point = this.pdn2XY(pdnPos);
+        let topY = 0;
+        if(this.turn==C_BLACK){
+            topY = this.height - 1;
+        }
+        return point.y == topY;
     }
 
     getPawnsNormalMv(from:number,turn: number):Array<DMove>{
@@ -910,14 +937,12 @@ export class FDGame {
     }
 
     searchPawnsEatMvs(start:number){
-        this.pawnEatMvs = []
         for(let d = 0 ; d < 4 ; d++){
             this.searchPawnEatDirect(start,d,this.cloneBoard(),null)
         }
     }
 
     searchKingEatMvs(start:number){
-        this.kingEatMvs = []
         for(let d = 0 ; d < 4 ; d++){
             this.searchKingEatDirect(start,d,this.cloneBoard(),null)
         }
@@ -950,7 +975,7 @@ export class FDGame {
                 break
             case 3:
                 tarPos = {x:fromPos.x+1,y:fromPos.y+1}
-                toPos = {x:fromPos.x-2,y:fromPos.y+2}
+                toPos = {x:fromPos.x+2,y:fromPos.y+2}
                 break
         }
         let check = this.xyCheck(toPos.x,toPos.y)
@@ -1013,7 +1038,7 @@ export class FDGame {
                         //后面没空格，直接返回
                         if(!this.xyCheck(toPos.x,toPos.y)) return
                         let toIdx = this.xy2Idx(toPos.x,toPos.y)
-                        let toPice = b[tarIdx]
+                        let toPice = b[toIdx]
                         //空格有子直接返回
                         if(toPice!=NONE) return
 
