@@ -958,7 +958,7 @@ export class FDGame {
             let fromIdx= this.pdnPos2Idx(from)
             let tarIdx = this.xy2Idx(tarPos.x,tarPos.y)
             let toIdx = this.xy2Idx(toPos.x,toPos.y)
-            let fromPice = this.board[fromIdx]
+            let fromPice = b[fromIdx]
             let tarPice = b[tarIdx]
             let toPice = b[toIdx]
             if(toPice==NONE && (tarPice!=NONE && (tarPice &this.turn)!=this.turn)){
@@ -1003,7 +1003,7 @@ export class FDGame {
             if(!this.xyCheck(toMin.x,toMin.y)) return
             let fromIdx= this.pdnPos2Idx(from)
             let tarIdx = this.xy2Idx(tarPos.x,tarPos.y)
-            let fromPice = this.board[fromIdx]
+            let fromPice = b[fromIdx]
             let tarPice = b[tarIdx]
             if(tarPice!=NONE ){
                 if((tarPice &this.turn)!=this.turn){
