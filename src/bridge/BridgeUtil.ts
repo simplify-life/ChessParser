@@ -24,10 +24,20 @@ export namespace BridgeUtil {
      * @returns 
      */
     export const score2IMP = (diffScore:number):number=>{
-        for(let i = 0 ; i < IMP_MinMax.length ; i ++)
-        if(diffScore>=IMP_MinMax[i][0] && diffScore<+IMP_MinMax[i][1]) return i
-        return 0
+        let left = 0, right = IMP_MinMax.length - 1;
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            if (diffScore >= IMP_MinMax[mid][0] && diffScore <= IMP_MinMax[mid][1]) {
+                return mid;
+            } else if (diffScore < IMP_MinMax[mid][0]) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+        return 0;
     }
+
 
     /**
      * 计算基本分
