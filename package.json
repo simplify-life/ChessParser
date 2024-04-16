@@ -1,5 +1,12 @@
 {
-    "dependencies": {
-        "ts-node": "^8.5.4"
-    }
+  "author": "Ximena <xiaominghe2014@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=7.4.0"
+  },
+  "dependencies": {
+    "@types/node": "^15.14.9",
+    "ts-node": "^8.10.2",
+    "typescript": "^5.1.6"
+  }
 }

@@ -7,12 +7,11 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "test",
-            "args": ["${workspaceFolder}/test.ts"],
+            "name": "Debug Current Test File",
+            "args": ["${file}"],
             "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
             "sourceMaps": true,
             "cwd": "${workspaceRoot}",
-            "protocol": "inspector",
             "console": "integratedTerminal"
         }
     ]

@@ -201,16 +201,20 @@ export function fenToObj(fen:string) {
   }
 
   export function clone(obj) {
+    // 首先检查obj是否为null或undefined
+    if (obj === null || typeof obj !== 'object') {
+      return obj;
+    }
     var dupe = (obj instanceof Array) ? [] : {};
-
     for (var property in obj) {
-      if (typeof property === 'object') {
-        dupe[`${property}`] = clone(obj[property]);
-      } else {
-        dupe[property] = obj[property];
+      if (obj.hasOwnProperty(property)) {
+        if (typeof obj[property] === 'object') {
+          dupe[property] = clone(obj[property]);
+        } else {
+          dupe[property] = obj[property];
+        }
       }
     }
-
     return dupe;
   }
 

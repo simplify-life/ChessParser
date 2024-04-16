@@ -13,8 +13,11 @@
       "sourceMap": false,
       "declaration": true,
       "emitDecoratorMetadata": true,
-      "experimentalDecorators": true
+      "experimentalDecorators": true,
+      "baseUrl": "./src",
     },
+    "include": [ "src/**/*.ts",
+    "tests/**/*.ts"],
     "exclude": [
       "node_modules"
     ]
