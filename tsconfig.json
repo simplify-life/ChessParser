@@ -1,24 +1,21 @@
 {
-    "compilerOptions": {
-      "module": "commonjs",
-      "target": "es6",
-      "lib": [
-        "es5",
-        "es2015",
-        "esnext",
-        "dom",
-        "es6"
-      ],
-      "noEmitHelpers": true,
-      "sourceMap": false,
-      "declaration": true,
-      "emitDecoratorMetadata": true,
-      "experimentalDecorators": true,
-      "baseUrl": "./src",
-    },
-    "include": [ "src/**/*.ts",
-    "tests/**/*.ts"],
-    "exclude": [
+  "compilerOptions": {
+    "declaration": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "build",
+    "target": "es5",
+    "sourceMap": true,
+    "skipDefaultLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators" : true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "baseUrl": "./src",
+  },
+  "include": [ "src/**/*.ts",
+              "tests/**/*.ts"],
+  "exclude": [
       "node_modules"
-    ]
-  }
+  ]
+}

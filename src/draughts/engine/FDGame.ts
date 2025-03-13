@@ -536,13 +536,14 @@ export class FDGame {
         return maxBR
     }
 
-    idxMaxDiff(idx: number,diffType: number) {
+    idxMaxDiff(idx: number,diffType: number):Array<number> {
         if(diffType==0)
         return [this.idxMaxDiffTopLeft(idx),this.idxMaxDiffTopRight(idx),this.idxMaxDiffBottomLeft(idx),this.idxMaxDiffBottomRight(idx)]
         if(diffType==1)
         return [this.idxMaxDiffTopLeft(idx),this.idxMaxDiffTopRight(idx)]
         if(diffType==2)
         return [this.idxMaxDiffBottomLeft(idx),this.idxMaxDiffBottomRight(idx)]
+        throw new Error(`not support this diffType : ${diffType}`);
     }
 
     /**
@@ -957,7 +958,7 @@ export class FDGame {
      * @param b 棋盘
      * @param mvs 存储的搜索路径
      */
-    searchPawnEatDirect(from:number,d:number,b:Array<number>,mvs:Array<DMove>){
+    searchPawnEatDirect(from:number,d:number,b:Array<number>,mvs:Array<DMove>|null){
         if(mvs==null){
             mvs=[];
         }
@@ -1012,7 +1013,7 @@ export class FDGame {
 
 
 
-    searchKingEatDirect(from:number,d:number,b:Array<number>,mvs:Array<DMove>){
+    searchKingEatDirect(from:number,d:number,b:Array<number>,mvs:Array<DMove>|null){
         if(mvs==null){
             mvs=[];
         }

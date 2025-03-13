@@ -1,5 +1,3 @@
-
-
 export const EMPTY = 0
 export const BLACK = 1
 export const WHITE = 2
@@ -27,7 +25,7 @@ export class FGoBoard {
     private board:Array<number>;
     private capture:[number, number];
     private turn:number;
-    private moveHistory:Array<GoMove> ;
+    private moveHistory:Array<GoMove|null> ;
     private AB:string
     private AW:string
     constructor(board:Array<number>,width:number){
@@ -80,7 +78,7 @@ export class FGoBoard {
         let pos = mv.pos;
         if(pos<0 || pos>this.board.length-1) return false;
         if(this.board[pos]!=EMPTY) return false;
-        let result:MoveResult = this.tryMove(mv);
+        let result:MoveResult|null = this.tryMove(mv);
         if(result!=null){
             let info = result.info;
             for(let i of info){
@@ -115,7 +113,7 @@ export class FGoBoard {
         return info;
     }
 
-    public tryMove( mv:GoMove):MoveResult{
+    public tryMove( mv:GoMove):MoveResult|null{
         let newBoard = this.board.slice(0);
         let pos = mv.pos;
         newBoard[pos] = mv.color;
@@ -138,9 +136,9 @@ export class FGoBoard {
                 let lastMvPos = info[0];
                 let lastCapturePos = pos;
                 if(this.moveHistory.length>0){
-                    let lastMv:GoMove = this.moveHistory[this.moveHistory.length-1];
+                    let lastMv:GoMove|null = this.moveHistory[this.moveHistory.length-1];
                     if(lastMv!=null && lastMv.pos == lastMvPos){
-                        if(lastMv.result.info.length == 1 && lastMv.result.info[0] == lastCapturePos){
+                        if(lastMv.result?.info.length == 1 && lastMv.result.info[0] == lastCapturePos){
                             return  null;
                         }
                     }
@@ -155,7 +153,7 @@ export class FGoBoard {
     }
 
 
-    public searchNeighbors(cNeighbors:CaptureNeighbors, board:Array<number>, searchPos:number, color:number, searchList:Array<number>):void{
+    public searchNeighbors(cNeighbors:CaptureNeighbors, board:Array<number>, searchPos:number, color:number, searchList:Array<number>|null):void{
         if(searchList == null) searchList = [];
         if(searchPos<0 || searchPos > board.length -1) return;
         if(searchList.indexOf(searchPos)!=-1) return;
@@ -252,12 +250,12 @@ export class FGoBoard {
     }
 
     public isEye(pos:number, color:number,maxArea:number){
-        let eye = [];
+        let eye:Array<number> = [];
         this.searchEye(eye,pos,color,null,maxArea);
         return eye.length>0;
     }
 
-    private searchEye(eye:Array<number>,searchPos:number,color:number,searchList:Array<number>, maxEyeArea:number){
+    private searchEye(eye:Array<number>,searchPos:number,color:number,searchList:Array<number>|null, maxEyeArea:number){
         if(searchList == null) searchList = [];
         if(searchPos<0 || searchPos > this.board.length -1) return;
         if(searchList.indexOf(searchPos)!=-1) return;
@@ -285,7 +283,7 @@ export class FGoBoard {
         }
     }
 
-    public getLastSgfMv():string {
+    public getLastSgfMv():string|null {
         let s = this.moveHistory.length;
         if(s>0){
             let mv = this.moveHistory[s-1];
@@ -298,7 +296,7 @@ export class FGoBoard {
         return null;
     }
 
-    public getSgfMv(idx:number):string{
+    public getSgfMv(idx:number):string|null{
         let s = this.moveHistory.length;
         if(s>0 && idx<s && idx>=0){
             let mv = this.moveHistory[idx];
@@ -317,7 +315,7 @@ export class FGoBoard {
         return  "["+String.fromCharCode(x+97)+String.fromCharCode(y+97) +"]";
     }
 
-    public  getLastGTPMv():string{
+    public  getLastGTPMv():string|null{
         let s = this.moveHistory.length;
         if(s>0){
             let mv = this.moveHistory[s-1];
