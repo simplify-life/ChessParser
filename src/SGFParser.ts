@@ -1,41 +1,17 @@
 enum ParserState {
-    SGF_START,
-    NORMAL,
-    IN_NODE,
+    SGF_START,NORMAL,IN_NODE,
 }
 
 enum TokenType {
-    VARIATION_START,
-    VARIATION_END,
-    NODE_START,
-    KEY,
-    VALUE,
+    VARIATION_START,VARIATION_END,NODE_START,KEY,VALUE,
 }
-//TokenType 转为 String
-function tokenTypeToString(type: TokenType): String {
-    switch (type) {
-        case TokenType.VARIATION_START:
-            return "VARIATION_START";
-        case TokenType.VARIATION_END:
-            return "VARIATION_END";
-        case TokenType.NODE_START:
-            return "NODE_START";
-        case TokenType.KEY:
-            return "KEY";
-        case TokenType.VALUE:
-            return "VALUE";
-    }
-}
+
 class Token {
     type: TokenType;
     value: String;
     constructor(type: TokenType, value: String) {
         this.type = type;
         this.value = value;
-    }
-
-    toString(): String {
-        return `${tokenTypeToString(this.type)}  ${this.value}`;
     }
 }
 
@@ -64,8 +40,6 @@ export class Game {
     }
 }
 
-
-
 export class SGFParser {
 
     public parse(sgf: String): Game {
@@ -75,7 +49,6 @@ export class SGFParser {
     public parseNode(tokens: Token[]): Node {
         let root = new Node();
         let current = root;
-        let stack: Node[] = [];
         let parentStack: Node[] = [];
         let k = "";
         let branchStart = false;
@@ -93,13 +66,11 @@ export class SGFParser {
                     break;
                 case TokenType.NODE_START:
                     if (branchStart) {
-                        //分支开始
                         branchStart = false;
                         let newNode = new Node();
                         current.children.push(newNode);
                         current = newNode;
                     } else {
-                        // 当前分支的下一个节点
                         let newNode = new Node();
                         current.next = newNode;
                         current = newNode;
@@ -114,19 +85,17 @@ export class SGFParser {
                     break;
             }
         }
-
         return root.next;
     }
 
     public tokennize(sgf: String): Token[] {
         let tokens: Token[] = [];
         let state = ParserState.SGF_START;
-        let i = 0;
         let currentKey = "";
         let currentValue = "";
         let readValue = false;
-        while (i < sgf.length) {
-            let c = sgf[i];
+        for (let i = 0 ; i < sgf.length; i++) {
+            const c = sgf[i];
             switch (state) {
                 case ParserState.SGF_START:
                     if (c == '(') {
@@ -145,78 +114,45 @@ export class SGFParser {
                     }
                     break;
                 case ParserState.IN_NODE:
-                    // 读取key,应该是字母或者数字，并且不能是空格
-                    for (; i < sgf.length; i++) {
-                        c = sgf[i];
-                        // 如果没有读取Value,直接读取key
-                        if (!readValue) {
-                            if (c.match(/[a-zA-Z0-9]/)) {
-                                currentKey += c;
-                            } else if (c == '[') {
-                                tokens.push(new Token(TokenType.KEY, currentKey));
-                                currentKey = "";
-                                readValue = true;
-                            }
+                    if(readValue){
+                        if (c == ']') {
+                            tokens.push(new Token(TokenType.VALUE, currentValue));
+                            readValue = false;
+                            currentValue = "";
                         } else {
-                            // 如果读取了Value,直接读取Value
-                            if (c == ']') {
-                                tokens.push(new Token(TokenType.VALUE, currentValue));
-                                readValue = false;
-                                currentValue = "";
-                                break;
-                            } else {
-                                currentValue += c;
-                            }
+                            currentValue += c;
                         }
-                    }
-                    //有可能处理下一个value
-                    for (; i < sgf.length; i++) {
-                        c = sgf[i];
-                        if (!readValue && c == ';') {
+                    }else{
+                        if (c.match(/[a-zA-Z0-9]/)) {
+                            currentKey += c;
+                        }else if (c == ';') {
                             tokens.push(new Token(TokenType.NODE_START, c));
                             state = ParserState.IN_NODE;
                             currentKey = "";
                             currentValue = "";
-                            break;
                         }
-                        if (!readValue && c == '(') {
+                        else if(c == '(') {
                             tokens.push(new Token(TokenType.VARIATION_START, c));
                             state = ParserState.NORMAL;
                             currentKey = "";
                             currentValue = "";
-                            break;
                         }
-                        if (!readValue && c == ')') {
+                        else if(c == ')') {
                             tokens.push(new Token(TokenType.VARIATION_END, c));
                             state = ParserState.NORMAL;
                             currentKey = "";
                             currentValue = "";
-                            break;
                         }
-                        if (!readValue && c.match(/[a-zA-Z0-9]/)) {
-                            currentKey += c;
-                        }
-                        if (!readValue && c == '[') {
+                        else if(c == '[') {
                             if (currentKey != "") {
                                 tokens.push(new Token(TokenType.KEY, currentKey));
                                 currentKey = "";
                             }
                             readValue = true;
-                            break;
-                        }
-                        if (readValue) {
-                            if (c == ']') {
-                                tokens.push(new Token(TokenType.VALUE, currentValue));
-                                readValue = false;
-                                currentValue = "";
-                            } else {
-                                currentValue += c;
-                            }
                         }
                     }
                     break;
             }
-            i++;
         }
         return tokens;
     }
