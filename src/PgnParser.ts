@@ -1,17 +1,8 @@
 
-enum ParserState {
-    NORMAL,
-    IN_COMMENT
-}
+enum ParserState {NORMAL,IN_COMMENT}
 
 enum TokenType{
-    MVE_NUMBER,
-    MOVE,
-    NAG,
-    COMMENT,
-    VARIATION_START,
-    VARIATION_END,
-    RESULT
+    MVE_NUMBER,MOVE,NAG,COMMENT,VARIATION_START,VARIATION_END,RESULT
 }
 
 class Token {
@@ -20,10 +11,6 @@ class Token {
     constructor(type: TokenType, value: String) {
         this.type = type;
         this.value = value;
-    }
-
-    toString(): String {
-        return `(${TokenType[this.type]}, ${this.value})`;
     }
 }
 
@@ -72,14 +59,6 @@ export class Game{
             node = node.next;
         }
         return step;
-    }
-
-    public bookOnlyTags():String{
-        let result = "";
-        this.tags.forEach((value, key) => {
-            result += `[${key} "${value}"]\n`;
-        });
-        return result;
     }
 }
 
@@ -262,7 +241,6 @@ export class PgnParser {
                         i += match[0].length;
                         continue;
                     }
-
                     //RESULT
                     match = moveText.substring(i).match(resultPattern);
                     if(match){
@@ -273,7 +251,6 @@ export class PgnParser {
                     // 无法识别的字符，跳过
                     i++;
                     break;
-
                 }
                 case ParserState.IN_COMMENT:
                     if(c == '}'){
