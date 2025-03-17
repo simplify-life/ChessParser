@@ -50,16 +50,6 @@ export class Game{
     getRootNode(): MoveNode|null {
         return this.root?.root;
     }
-
-    public getMainStep():number{
-        let step = 0;
-        let node = this.getRootNode();
-        while(node!=void 0){
-            step++;
-            node = node.next;
-        }
-        return step;
-    }
 }
 
 export class VariationInfo {
@@ -82,39 +72,23 @@ export class MoveInfo {
     }
 }
 
-
-const tagPattern = /^\[(\w+)\s+"(.*)"\]$/;
-const moveNumberPattern = /^(\d+)(?:\.\.\.|\.)/;
-// 国际象棋移动记谱法（兼容多种格式）
-const movePattern = /^([KQRBNP]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?|O-O(?:-O)?|[KQRBNP][a-h1-8]?x?[a-h][1-8]|[KQRBNP][1-8]x?[a-h][1-8]|[KQRBNP]x[a-h][1-8])[+#]?[!?]*/;
-
-// 坐标记谱法模式 (如 H2-H6)，忽略大小写
-const coordinateMovePattern = /^([A-I][0-9])-([A-I][0-9])/i;
-
-// WXF记谱法模式 (如 H2+3, R1.2, C7-5)，忽略大小写
-const wxfMovePattern = /^([KAEHRCP])([1-9])([+\-.]?)(10|[1-9])/i;
-
-// 中国象棋传统记谱法模式（Unicode 支持）
-const chineseMovePattern = /^([车马相仕帅炮兵将士象马车炮卒])([一二三四五六七八九１２３４５６７８９123456789])([进退平])([一二三四五六七八九１２３４５６７８９123456789])/;
-
-// 中国象棋传统其它记谱法模式（Unicode 支持）
-const chineseOtherMovePattern = /^([前后左右中])([车马相仕帅炮兵将士象马车炮卒])([进退平])([一二三四五六七八九１２３４５６７８９123456789])/;
-
-// 虚着（仅匹配 ...）
-const virtualMovePattern = /^(\.\.\.)/;
-
-// 棋局评注符号（如 $1, !! 等）
-const nagPattern = /^\$[0-9]+|!!|\?\?|!\?|\?!|!|\?/;
-
-// 对局结果标记
-const resultPattern = /^(1-0|0-1|1\/2-1\/2|\*)$/;
+const PATTERNS = {
+    tag: /^\[(\w+)\s+"(.*)"\]$/,
+    moveNumber: /^(\d+)(?:\.\.\.|\.)/,
+    move: /^([KQRBNP]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?|O-O(?:-O)?|[KQRBNP][a-h1-8]?x?[a-h][1-8]|[KQRBNP][1-8]x?[a-h][1-8]|[KQRBNP]x[a-h][1-8])[+#]?[!?]*/,
+    coordinateMove: /^([A-I][0-9])-([A-I][0-9])/i,
+    wxfMove: /^([KAEHRCP])([1-9])([+\-.]?)(10|[1-9])/i,
+    chineseMove: /^([车马相仕帅炮兵将士象马车炮卒])([一二三四五六七八九１２３４５６７８９123456789])([进退平])([一二三四五六七八九１２３４５６７８９123456789])/,
+    chineseOtherMove: /^([前后左右中])([车马相仕帅炮兵将士象马车炮卒])([进退平])([一二三四五六七八九１２３４５６７８９123456789])/,
+    virtualMove: /^(\.\.\.)/,
+    nag: /^\$[0-9]+|!!|\?\?|!\?|\?!|!|\?/,
+    result: /^(1-0|0-1|1\/2-1\/2|\*)$/,
+}
 
 function isWhitespaceChar(char: string): boolean {
-    // 确保输入是单个字符
     if (char.length !== 1) {
       throw new Error("输入必须是单个字符");
     }
-    // 匹配空白字符（包括空格、制表符、换行符等）
     return /^\s$/.test(char);
   }
 
@@ -123,7 +97,7 @@ export class PgnParser {
         const tags = new Map<String, String>();
         const lines = pgnText.split('\n');
         for (const line of lines) {
-            const match = line.match(tagPattern);
+            const match = line.match(PATTERNS.tag);
             if (match) {
                 tags.set(match[1], match[2]);
             }
@@ -161,6 +135,15 @@ export class PgnParser {
         let state = ParserState.NORMAL;
         let i = 0;
         let commentStart = 0;
+        const tryMatchPattern = (pattern: RegExp, tokenType: TokenType): boolean => {
+            const match = moveText.substring(i).match(pattern);
+            if (match) {
+                tokens.push(new Token(tokenType, match[1]));
+                i += match[0].length;
+                return true;
+            }
+            return false;
+        };
         while (i < moveText.length) {
             let c = moveText.charAt(i);
             switch (state) {
@@ -185,69 +168,14 @@ export class PgnParser {
                         i++;
                         continue;
                     }
-                    // 尝试匹配回合标记
-                    let match = moveText.substring(i).match(moveNumberPattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.MVE_NUMBER, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
-                    // 尝试匹配移动
-                    match = moveText.substring(i).match(movePattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.MOVE, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
-
-                    match = moveText.substring(i).match(coordinateMovePattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.MOVE, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
-
-                    match = moveText.substring(i).match(wxfMovePattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.MOVE, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
-
-                    match = moveText.substring(i).match(chineseMovePattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.MOVE, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
-
-                    match = moveText.substring(i).match(chineseOtherMovePattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.MOVE, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
-
-                    match = moveText.substring(i).match(virtualMovePattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.MOVE, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
-                    //NAG
-                    match = moveText.substring(i).match(nagPattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.NAG, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
-                    //RESULT
-                    match = moveText.substring(i).match(resultPattern);
-                    if(match){
-                        tokens.push(new Token(TokenType.RESULT, match[1]));
-                        i += match[0].length;
-                        continue;
-                    }
+                    if(tryMatchPattern(PATTERNS.moveNumber, TokenType.MVE_NUMBER)) continue;
+                    if(tryMatchPattern(PATTERNS.move, TokenType.MOVE)) continue;
+                    if(tryMatchPattern(PATTERNS.coordinateMove, TokenType.MOVE)) continue;
+                    if(tryMatchPattern(PATTERNS.wxfMove, TokenType.MOVE)) continue;
+                    if(tryMatchPattern(PATTERNS.chineseMove, TokenType.MOVE)) continue;
+                    if(tryMatchPattern(PATTERNS.chineseOtherMove, TokenType.MOVE)) continue;
+                    if(tryMatchPattern(PATTERNS.virtualMove, TokenType.MOVE)) continue;
+                    if(tryMatchPattern(PATTERNS.nag, TokenType.NAG)) continue;
                     // 无法识别的字符，跳过
                     i++;
                     break;
@@ -415,10 +343,3 @@ export class PgnParser {
         return new Game(tags, tree);
     }
 }
-
-
-
-
-
-
-

@@ -43,7 +43,7 @@ export class Game {
 export class SGFParser {
 
     public parse(sgf: String): Game {
-        return new Game(this.parseNode(this.tokennize(sgf)));
+        return new Game(this.parseNode(this.tokenize(sgf)));
     }
 
     public parseNode(tokens: Token[]): Node {
@@ -88,7 +88,7 @@ export class SGFParser {
         return root.next;
     }
 
-    public tokennize(sgf: String): Token[] {
+    public tokenize(sgf: String): Token[] {
         let tokens: Token[] = [];
         let state = ParserState.SGF_START;
         let currentKey = "";
